@@ -140,6 +140,10 @@ services:
           --config-path /tmp/non-validator.toml \
           --no-color \
           --timeout-stream-manager 10ms \
+          --telemetry.enable-metrics \
+          --telemetry.enable-health \
+          --telemetry.host 0.0.0.0 \
+          --telemetry.port 9001 \
           -vvv
     ports:
       - "34070:34070"   # p2p
