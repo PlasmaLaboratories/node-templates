@@ -1576,7 +1576,7 @@
           "useBackend": false
         }
       ],
-      "title": "Propogated Transactions Rate",
+      "title": "Propagated Transactions Rate",
       "type": "timeseries"
     },
     {
