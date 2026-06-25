@@ -4,11 +4,11 @@ Templates and deployment configurations for running Plasma non-validator (observ
 
 ## Networks
 
-| Network | Chain ID | Consensus Image | Consensus Version | Execution Version | Bootstrap Nodes | GHCR Auth Required |
-|---------|----------|-----------------|-------------------|-------------------|-----------------|--------------------|
-| mainnet | 9745 | `plasma-consensus-public` | 0.15.0 | Reth v1.8.3 | 16 consensus + 16 execution | No |
-| testnet | 9746 | `plasma-consensus-public` | 0.15.0 | Reth v1.8.3 | 16 consensus + 16 execution | No |
-| devnet | 9747 | `plasma-consensus-public` | 0.15.0 | Reth v1.8.3 | 3 consensus + 3 execution | No |
+| Network | Chain ID | Consensus Image           | Consensus Version | Execution Version | Bootstrap Nodes             | GHCR Auth Required |
+| ------- | -------- | ------------------------- | ----------------- | ----------------- | --------------------------- | ------------------ |
+| mainnet | 9745     | `plasma-consensus-public` | 0.15.0            | Reth v1.8.3       | 16 consensus + 16 execution | No                 |
+| testnet | 9746     | `plasma-consensus-public` | 0.15.0            | Reth v1.8.3       | 16 consensus + 16 execution | No                 |
+| devnet  | 9747     | `plasma-consensus-public` | 0.15.0            | Reth v1.8.3       | 3 consensus + 3 execution   | No                 |
 
 ## Quick Start
 
@@ -55,14 +55,14 @@ All version numbers and image tags are defined in each network's `.env` file —
 
 Each network's `non-validator.toml` configures the consensus client. Key sections:
 
-| Section | Fields | Description |
-|---------|--------|-------------|
-| *(top-level)* | `engine_api_url`, `consensus_api_host`, `authrpc_jwtsecret` | Execution engine connection |
-| `[persistence]` | `data_dir` | Consensus data storage path |
-| `[network]` | `p2p_port`, `interval`, `timeout`, `identity_file_path`, `trusted_only`, `discovery.enabled` | P2P networking and peer discovery |
-| `[api]` | `enabled`, `host`, `port` | Consensus API endpoint |
-| `[validators.*]` | `validator_keystore_pk_file_path`, `identity_file_path` | Validator committee |
-| `[network.bootstrap_nodes.*]` | `api_host`, `p2p_port`, `peer_id` | Consensus bootstrap peers |
+| Section                       | Fields                                                                                       | Description                       |
+| ----------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------- |
+| _(top-level)_                 | `engine_api_url`, `consensus_api_host`, `authrpc_jwtsecret`                                  | Execution engine connection       |
+| `[persistence]`               | `data_dir`                                                                                   | Consensus data storage path       |
+| `[network]`                   | `p2p_port`, `interval`, `timeout`, `identity_file_path`, `trusted_only`, `discovery.enabled` | P2P networking and peer discovery |
+| `[api]`                       | `enabled`, `host`, `port`                                                                    | Consensus API endpoint            |
+| `[validators.*]`              | `validator_keystore_pk_file_path`, `identity_file_path`                                      | Validator committee               |
+| `[network.bootstrap_nodes.*]` | `api_host`, `p2p_port`, `peer_id`                                                            | Consensus bootstrap peers         |
 
 ### Peer Discovery
 
@@ -74,6 +74,7 @@ external_address = "node.example.com:34070"
 ```
 
 Or via CLI:
+
 ```
 --p2p.external-address node.example.com:34070
 ```
@@ -82,14 +83,14 @@ The port defaults to `p2p_port` if not provided.
 
 ### Ports
 
-| Service | Port | Protocol | Description |
-|---------|------|----------|-------------|
-| Execution RPC | 8545 | HTTP | JSON-RPC API endpoint |
-| Execution Auth | 8551 | HTTP | Engine API (internal) |
-| Execution P2P | 30303 | TCP/UDP | Peer-to-peer networking |
-| Consensus API | 35070 | HTTP | Consensus Health/API endpoint |
-| Consensus P2P | 34070 | TCP | Consensus networking |
-| Metrics | 9001 | HTTP | Prometheus metrics |
+| Service        | Port  | Protocol | Description                   |
+| -------------- | ----- | -------- | ----------------------------- |
+| Execution RPC  | 8545  | HTTP     | JSON-RPC API endpoint         |
+| Execution Auth | 8551  | HTTP     | Engine API (internal)         |
+| Execution P2P  | 30303 | TCP/UDP  | Peer-to-peer networking       |
+| Consensus API  | 35070 | HTTP     | Consensus Health/API endpoint |
+| Consensus P2P  | 34070 | TCP      | Consensus networking          |
+| Metrics        | 9001  | HTTP     | Prometheus metrics            |
 
 ## Usage
 
@@ -107,17 +108,20 @@ docker compose down -v && docker compose up -d    # Clean restart
 ## Troubleshooting
 
 ### Container Startup Failures
+
 ```bash
 docker compose logs <service-name>
 ```
 
 ### Image Pull Issues
+
 ```bash
 # GHCR authentication is not required for `plasma-consensus-public`
 docker pull ghcr.io/plasmalaboratories/plasma-consensus-public:0.15.0
 ```
 
 ### Sync Issues
+
 ```bash
 # Check execution client sync status
 curl -s -X POST -H "Content-Type: application/json" \
@@ -128,6 +132,7 @@ curl -s -X POST -H "Content-Type: application/json" \
 ## Monitoring
 
 Monitor your node's health:
+
 - Execution RPC: `http://localhost:8545`
 - Consensus API: `http://localhost:35070`
 - Metrics: `http://localhost:9001/metrics`
@@ -147,25 +152,25 @@ Each snapshot contains two files — the consensus-layer database and the execut
 
 ### Prerequisites
 
-| Requirement | Details |
-|-------------|---------|
-| AWS account | Credentials configured via `aws configure` or environment variables |
-| AWS CLI | v2 recommended (`aws --version`) |
-| Disk space | **Mainnet:** ~400 GB free &nbsp;&bull;&nbsp; **Testnet:** ~100 GB free |
+| Requirement | Details                                                                |
+| ----------- | ---------------------------------------------------------------------- |
+| AWS account | Credentials configured via `aws configure` or environment variables    |
+| AWS CLI     | v2 recommended (`aws --version`)                                       |
+| Disk space  | **Mainnet:** ~400 GB free &nbsp;&bull;&nbsp; **Testnet:** ~100 GB free |
 
 > **Cost note:** Data transfer out from `us-east-2` is ~$0.09/GB for the first 10 TB/month. Transferring from an EC2 instance **in the same region** is free — running your node in `us-east-2` is the most cost-effective option.
 
 ### Snapshot Buckets
 
-| Property | Mainnet | Testnet |
-|----------|---------|---------|
-| **Bucket** | `plasma-mainnet-db-backups` | `plasma-testnet-db-backups` |
-| **Prefix format** | `mainnet/<snapshot-source>/<date>/` | `testnet/<snapshot-source>/<date>/` |
-| **Current source** | `observer-0` | `observer-0` |
-| **Region** | `us-east-2` (Ohio) | `us-east-2` (Ohio) |
-| **Access model** | Requester-pays | Requester-pays |
-| **Backup cadence** | Daily | Daily at 02:00 UTC |
-| **Transport** | TLS required | TLS required |
+| Property           | Mainnet                             | Testnet                             |
+| ------------------ | ----------------------------------- | ----------------------------------- |
+| **Bucket**         | `plasma-mainnet-db-backups`         | `plasma-testnet-db-backups`         |
+| **Prefix format**  | `mainnet/<snapshot-source>/<date>/` | `testnet/<snapshot-source>/<date>/` |
+| **Current source** | `observer-0`                        | `observer-0`                        |
+| **Region**         | `us-east-2` (Ohio)                  | `us-east-2` (Ohio)                  |
+| **Access model**   | Requester-pays                      | Requester-pays                      |
+| **Backup cadence** | Daily                               | Daily at 02:00 UTC                  |
+| **Transport**      | TLS required                        | TLS required                        |
 
 ### Bucket Contents
 
@@ -180,9 +185,9 @@ plasma-mainnet-db-backups/
             └── execution-backup-20260606-020000.tar.gz
 ```
 
-| File | Description |
-|------|-------------|
-| **Consensus database** | Consensus-layer database snapshot |
+| File                               | Description                                         |
+| ---------------------------------- | --------------------------------------------------- |
+| **Consensus database**             | Consensus-layer database snapshot                   |
 | **Execution database** (`.tar.gz`) | Tar archive of the reth execution `data/` directory |
 
 ### Step 1 — Download
@@ -230,9 +235,35 @@ aws s3 cp \
   --request-payer requester
 ```
 
-### Step 2 — Restore
+### Step 2 — Import snapshots (optional)
 
-Stop your node first. The default compose project volumes are `docker-compose_consensus-data` and `docker-compose_execution-data`.
+The compose stack imports snapshots **automatically**. Two one-shot services
+`import-consensus-snapshot` and `import-execution-snapshot` run before the node on every
+`docker compose up` and import the newest `*-backup-*.tar.gz` they find in `SNAPSHOT_DIR`.
+They are safe to leave enabled: each one no-ops when the database already exists or when no snapshot
+is present, so a node with a populated database or an empty `SNAPSHOT_DIR` starts normally.
+
+`SNAPSHOT_DIR` defaults to `../../backups/<network>` (resolved from
+`<network>/docker-compose`) — the same `backups/<network>` directory that
+`download-snapshot.sh` writes to. Point it elsewhere by editing `.env` or via the
+environment.
+
+```bash
+NETWORK="mainnet"
+cd "$NETWORK/docker-compose"
+
+# Fresh node: download (Step 1) then bring the stack up, import runs first.
+docker compose up -d
+```
+
+> The `import-*-snapshot` services use the consensus/execution images and tags from `.env`,
+> so they always match the node binaries that read the imported database.
+
+#### Manual import (alternative)
+
+To restore by hand instead, e.g. into volumes managed outside this compose project, run the steps
+below. Note the compose project is named after the network (`name: ${NETWORK}`), so the volumes are
+`<network>_consensus-data` and `<network>_execution-data` (e.g. `mainnet_consensus-data`).
 
 ```bash
 NETWORK="mainnet"
@@ -245,7 +276,7 @@ Restore consensus as `/consensus/data.mdb`, preserving the node identity files:
 
 ```bash
 docker run --rm --user 0:0 --entrypoint /bin/bash \
-  -v docker-compose_consensus-data:/consensus \
+  -v "${NETWORK}_consensus-data:/consensus" \
   -v "$BACKUP_DIR:/backups:ro" \
   ghcr.io/plasmalaboratories/plasma-consensus-public:0.15.0 \
   -lc 'set -euo pipefail
@@ -259,7 +290,7 @@ Restore execution, preserving the local Reth discovery secret if the snapshot do
 
 ```bash
 docker run --rm --user 0:0 --entrypoint /bin/bash \
-  -v docker-compose_execution-data:/execution \
+  -v "${NETWORK}_execution-data:/execution" \
   -v "$BACKUP_DIR:/backups:ro" \
   ghcr.io/paradigmxyz/reth:v1.8.3 \
   -lc 'set -euo pipefail
@@ -280,11 +311,11 @@ docker compose ps
 
 ### Snapshot Troubleshooting
 
-| Issue | Cause / Fix |
-|-------|-------------|
-| `Access Denied` | You must include `--request-payer requester` on every command. The bucket rejects requests without it. |
-| `403 Forbidden` | AWS credentials not configured. Run `aws sts get-caller-identity` to verify you have a valid session. |
+| Issue                | Cause / Fix                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `Access Denied`      | You must include `--request-payer requester` on every command. The bucket rejects requests without it.                         |
+| `403 Forbidden`      | AWS credentials not configured. Run `aws sts get-caller-identity` to verify you have a valid session.                          |
 | Empty bucket listing | Older backups are automatically cleaned up. If the bucket appears empty, a backup cycle may be in progress — check back later. |
-| Wrong prefix | Use `<network>/<snapshot-source>/<date>/`, for example `mainnet/observer-0/06-06-26/`. |
+| Wrong prefix         | Use `<network>/<snapshot-source>/<date>/`, for example `mainnet/observer-0/06-06-26/`.                                         |
 
 ---
