@@ -19,7 +19,7 @@ Options:
   --prefix PREFIX        Limit discovery to a bucket prefix, e.g. mainnet/observer-0/.
   --folder FOLDER        Snapshot folder/date or full prefix, e.g. 06-06-26 or mainnet/observer-0/06-06-26.
   --latest              Select the newest discovered snapshot folder without prompting.
-  --dest DIR             Destination directory. Defaults to ./backups/ENV.
+  --dest DIR             Destination directory. Defaults to ./config/ENV/snapshots.
   --chunk-size SIZE      Chunk size for ranged downloads. Defaults to 5GiB. Examples: 1G, 512M.
   --dry-run             Show what would be downloaded without downloading.
   --keep-parts          Keep part files after assembling final files.
@@ -208,7 +208,7 @@ if [[ -n "$FOLDER" && "$FOLDER" == s3://* ]]; then
 fi
 
 [[ -n "$BUCKET" ]] || die "no default bucket for $ENVIRONMENT; pass --bucket or set PLASMA_${ENVIRONMENT^^}_BACKUPS_BUCKET"
-[[ -n "$DESTDIR" ]] || DESTDIR="./backups/$ENVIRONMENT"
+[[ -n "$DESTDIR" ]] || DESTDIR="./config/$ENVIRONMENT/snapshots"
 (( CHUNK_SIZE > 0 )) || die "--chunk-size must be greater than zero"
 
 AWS_GLOBAL_ARGS=()

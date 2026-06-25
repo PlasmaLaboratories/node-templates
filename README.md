@@ -19,41 +19,60 @@ cd non-validator-templates
 
 # No GHCR login is required; `plasma-consensus-public` is publicly accessible
 
-# Start a node (replace {network} with mainnet, testnet, or devnet)
-cd {network}/docker-compose
+# Start a node — defaults to devnet (the root .env symlinks to config/devnet/.env)
 docker compose up -d
 
-# Optional: start monitoring (Prometheus + Grafana)
-docker compose -f monitoring.yml up -d
+# For testnet or mainnet, select the network with --env-file
+docker compose --env-file config/testnet/.env up -d
+
+# Optional: start the node together with monitoring (Prometheus + Grafana).
+# Combining both files keeps them in one project/network so Prometheus can
+# scrape the node services by name.
+docker compose -f compose.yml -f monitoring/compose.yml up -d
 
 # Verify
 docker compose ps
 docker compose logs -f plasma-consensus
 ```
 
+> Run all commands from the repository root. The root `.env` is a symlink to
+> `config/devnet/.env`, so commands default to **devnet**. Select another network by
+> adding `--env-file config/{network}/.env` (it sets the Compose project `name` and
+> supplies that network's configuration), e.g. `--env-file config/mainnet/.env`.
+
 ## Directory Structure
 
 ```
-{network}/
-├── docker-compose/
-│   ├── docker-compose.yml        # Service definitions
-│   ├── .env                      # Image versions and tags (source of truth)
-│   ├── non-validator.toml        # Consensus configuration
-│   ├── enodes.txt                # Execution bootstrap nodes
-│   ├── monitoring.yml            # Monitoring stack
-│   └── monitoring/               # Prometheus & Grafana configs
-└── shared/                       # Validator keys & identities (read-only)
-    ├── keys/                     # BLS12-381 validator public keys
-    └── identities/               # Validator identity files
+compose.yml                 # Single, network-agnostic service definitions
+.env -> config/devnet/.env  # Default network (devnet); override with --env-file
+monitoring/                 # Monitoring stack (compose.yml + Prometheus & Grafana configs)
+scripts/                    # download-snapshot.sh
+config/                     # Per-network configuration and data
+├── {network}/
+│   ├── .env                # Image tags, NETWORK, SNAPSHOT_DIR, ENODES
+│   ├── non-validator.toml  # Consensus config (incl. this network's bootstrap nodes)
+│   ├── genesis.json        # Chain genesis
+│   ├── keys/               # BLS12-381 validator public keys
+│   └── identities/         # Validator identity files
 ```
 
 ## Configuration
 
-All version numbers and image tags are defined in each network's `.env` file — that is the single source of truth. See `{network}/docker-compose/.env` for current values.
+Each network's config lives under `config/{network}/`. The `.env` holds the image
+versions and tags, the network name, the snapshot directory, and the execution
+`ENODES` list; `non-validator.toml` holds the consensus configuration including
+that network's bootstrap nodes. One shared `compose.yml` serves all
+networks. The validator keys, identities, and genesis stay as files because the
+consensus client (0.15.0) reads them from disk.
+
+> Execution peers are passed to reth on the command line via `ENODES`, but
+> consensus bootstrap nodes live in `non-validator.toml`: consensus 0.15.0 has no
+> CLI/env option for them, so they must be in the config file the observer reads.
 
 ### Consensus Configuration (`non-validator.toml`)
 
-Each network's `non-validator.toml` configures the consensus client. Key sections:
+Each network has its own `config/{network}/non-validator.toml` (the files are
+identical apart from the per-network `[network.bootstrap_nodes.*]` entries). Key sections:
 
 | Section                       | Fields                                                                                       | Description                       |
 | ----------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------- |
@@ -94,15 +113,17 @@ The port defaults to `p2p_port` if not provided.
 
 ## Usage
 
-```bash
-cd {network}/docker-compose
+Run from the repository root. Export the env file once to avoid repeating it:
 
-docker compose up -d                              # Start
-docker compose -f monitoring.yml up -d            # Start monitoring
-docker compose logs -f                            # Logs
-docker compose down                               # Stop
-docker compose -f monitoring.yml down             # Stop monitoring
-docker compose down -v && docker compose up -d    # Clean restart
+```bash
+export NETWORK={network}                                          # mainnet, testnet, or devnet
+
+docker compose --env-file config/$NETWORK/.env up -d                  # Start
+docker compose --env-file config/$NETWORK/.env -f compose.yml -f monitoring/compose.yml up -d   # Start with monitoring
+docker compose --env-file config/$NETWORK/.env logs -f                # Logs
+docker compose --env-file config/$NETWORK/.env down                   # Stop
+docker compose --env-file config/$NETWORK/.env down -v && \
+docker compose --env-file config/$NETWORK/.env up -d                # Clean restart
 ```
 
 ## Troubleshooting
@@ -192,7 +213,7 @@ plasma-mainnet-db-backups/
 
 ### Step 1 — Download
 
-Use the helper script for large, restartable requester-pays downloads. It writes to `./backups/<network>` by default.
+Use the helper script for large, restartable requester-pays downloads. It writes to `./config/<network>/snapshots` by default.
 
 ```bash
 NETWORK="mainnet"              # mainnet or testnet
@@ -229,7 +250,7 @@ DATE="06-06-26"
 
 aws s3 cp \
   "s3://${BUCKET}/${NETWORK}/${SNAPSHOT_SOURCE}/${DATE}/" \
-  "./backups/${NETWORK}/" \
+  "./config/${NETWORK}/snapshots/" \
   --recursive \
   --region us-east-2 \
   --request-payer requester
@@ -243,21 +264,19 @@ The compose stack imports snapshots **automatically**. Two one-shot services
 They are safe to leave enabled: each one no-ops when the database already exists or when no snapshot
 is present, so a node with a populated database or an empty `SNAPSHOT_DIR` starts normally.
 
-`SNAPSHOT_DIR` defaults to `../../backups/<network>` (resolved from
-`<network>/docker-compose`) — the same `backups/<network>` directory that
-`download-snapshot.sh` writes to. Point it elsewhere by editing `.env` or via the
-environment.
+`SNAPSHOT_DIR` defaults to `./config/<network>/snapshots` (resolved from the
+repository root) — the same directory that `download-snapshot.sh` writes to.
+Point it elsewhere by editing `config/<network>/.env` or via the environment.
 
 ```bash
-NETWORK="mainnet"
-cd "$NETWORK/docker-compose"
+NETWORK="mainnet"   # run from the repository root
 
 # Fresh node: download (Step 1) then bring the stack up, import runs first.
-docker compose up -d
+docker compose --env-file "config/$NETWORK/.env" up -d
 ```
 
-> The `import-*-snapshot` services use the consensus/execution images and tags from `.env`,
-> so they always match the node binaries that read the imported database.
+> The `import-*-snapshot` services use the consensus/execution images and tags from
+> `config/<network>/.env`, so they always match the node binaries that read the imported database.
 
 #### Manual import (alternative)
 
@@ -266,10 +285,9 @@ below. Note the compose project is named after the network (`name: ${NETWORK}`),
 `<network>_consensus-data` and `<network>_execution-data` (e.g. `mainnet_consensus-data`).
 
 ```bash
-NETWORK="mainnet"
-cd "$NETWORK/docker-compose"
-docker compose down
-BACKUP_DIR="$(cd "../../backups/$NETWORK" && pwd)"
+NETWORK="mainnet"   # run from the repository root
+docker compose --env-file "config/$NETWORK/.env" down
+BACKUP_DIR="$(cd "config/$NETWORK/snapshots" && pwd)"
 ```
 
 Restore consensus as `/consensus/data.mdb`, preserving the node identity files:
@@ -305,8 +323,8 @@ tar -xzf /backups/execution-backup-*.tar.gz -C /execution \
 Restart and check status:
 
 ```bash
-docker compose up -d
-docker compose ps
+docker compose --env-file "config/$NETWORK/.env" up -d
+docker compose --env-file "config/$NETWORK/.env" ps
 ```
 
 ### Snapshot Troubleshooting
