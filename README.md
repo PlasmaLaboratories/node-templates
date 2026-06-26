@@ -1,8 +1,22 @@
+<div align="center">
+
+<img src="assets/plasma-logo.png" alt="Plasma" width="104" />
+
 # Plasma Non-Validator Templates
 
-Templates and deployment configurations for running Plasma non-validator (observer) nodes.
+**Templates and deployment configurations for running Plasma non-validator (observer) nodes.**
+
+[![Website](https://img.shields.io/badge/website-plasma.org-14342B)](https://www.plasma.org)
+![Networks](https://img.shields.io/badge/networks-mainnet%20%C2%B7%20testnet%20%C2%B7%20devnet-14342B)
+![Consensus](https://img.shields.io/badge/consensus-0.15.0-14342B)
+![Execution](https://img.shields.io/badge/execution-Reth%20v1.8.3-14342B)
+
+</div>
+
+## Contents
 
 - [Plasma Non-Validator Templates](#plasma-non-validator-templates)
+  - [Contents](#contents)
   - [Networks](#networks)
   - [Quick Start](#quick-start)
   - [Directory Structure](#directory-structure)
