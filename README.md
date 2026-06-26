@@ -57,12 +57,14 @@ cd non-validator-templates
 
 # No GHCR login is required; `plasma-consensus-public` is publicly accessible
 
-# Start a node, defaults to devnet (the root .env symlinks to config/devnet/.env)
+# Start a node, defaults to mainnet (the root .env symlinks to config/mainnet/.env)
 docker compose up -d
 
-# For testnet or mainnet, override the network with --env-file
+# For testnet or devnet, override the network with --env-file
 docker compose --env-file config/testnet/.env up -d
-# Alternatively, update the symlink to change the default network to testnet or mainnet
+# Alternatively, change the default network with
+scripts/use.sh testnet
+# Which essentially updates the .env symlink:
 ln -sf config/testnet/.env .env
 
 # Optional: start the node together with monitoring (Prometheus + Grafana).
@@ -76,17 +78,18 @@ docker compose logs -f plasma-consensus
 ```
 
 > Run all commands from the repository root. The root `.env` is a symlink to
-> `config/devnet/.env`, so commands default to **devnet**. Select another network by
+> `config/mainnet/.env`, so commands default to **mainnet**. Select another network by
 > adding `--env-file config/{network}/.env` (it sets the Compose project `name` and
-> supplies that network's configuration), e.g. `--env-file config/mainnet/.env`.
+> supplies that network's configuration), e.g. `--env-file config/testnet/.env`, or
+> change the default with `scripts/use.sh testnet`.
 
 ## Directory Structure
 
 ```
 compose.yml                 # Network-agnostic service definitions
-.env -> config/devnet/.env  # Symbolic link to default network, override with --env-file
+.env -> config/mainnet/.env # Symlink, change with scripts/use.sh, or override with --env-file
 monitoring/                 # Monitoring stack (separate compose.yml + Prometheus & Grafana configs)
-scripts/                    # Scripts such as download-snapshot.sh
+scripts/                    # Scripts such as use.sh and download-snapshot.sh
 config/                     # Per-network configuration and data
 ├── {network}/              # Networks: devnet, testnet, mainnet
 │   ├── .env                # Configure network, images, tags, snapshots, trusted peers
@@ -164,7 +167,7 @@ docker compose up
 # Run a node on the testnet network in the background
 docker compose --env-file config/testnet/.env up -d
 # Change the default network to testnet, persists on disk
-ln -sf config/testnet/.env .env
+scripts/use.sh testnet
 # Run the monitoring stack
 docker compose -f monitoring/compose.yml up -d
 # Run a node on the default network with monitoring
