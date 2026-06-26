@@ -194,8 +194,8 @@ Monitor your node's health:
 
 ## Database Snapshots
 
-Plasma publishes daily database snapshots for **mainnet** and **testnet**. Snapshots let you
-bootstrap a new node in hours instead of syncing from genesis, which can take days to weeks.
+Plasma publishes daily database snapshots for all networks. Snapshots let you bootstrap a new node
+in hours instead of syncing from genesis, which can take days to weeks.
 
 Each snapshot contains two files, the consensus-layer database and the execution-layer database.
 They are uploaded to a _requester-pays_ S3 bucket. You need an AWS account; standard S3
