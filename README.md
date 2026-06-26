@@ -217,11 +217,13 @@ data-transfer rates apply.
 
 ### Prerequisites
 
-| Requirement | Details                                                                |
-| ----------- | ---------------------------------------------------------------------- |
-| AWS account | Credentials configured via `aws configure` or environment variables    |
-| AWS CLI     | v2 recommended (`aws --version`)                                       |
-| Disk space  | **Mainnet:** ~400 GB free &nbsp;&bull;&nbsp; **Testnet:** ~100 GB free |
+| Requirement | Details                                                             |
+| ----------- | ------------------------------------------------------------------- |
+| AWS account | Credentials configured via `aws configure` or environment variables |
+| AWS CLI     | v2 recommended (`aws --version`)                                    |
+| Disk space  | **Mainnet:** ~500 GB free (updated: 26 June 2026)                   |
+|             | **Testnet:** ~100 GB free                                           |
+|             | **Devnet:** ~100 GB free                                            |
 
 > **Cost note:** Data transfer out from `us-east-2` is ~$0.09/GB for the first 10 TB/month.
 > Transferring from an EC2 instance **in the same region** is free. Running your node in
