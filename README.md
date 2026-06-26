@@ -247,40 +247,40 @@ s3://plasma-devnet-db-backups/devnet/observer-0/06-22-26/execution-backup-202606
 
 ### Step 1: Download
 
-Use the helper script for large, resumable requester-pays downloads. It writes to
-`./config/<network>/snapshots` by default.
+Use the helper script for large, resumable requester-pays downloads. Fast multi-threaded downloads
+with s5cmd are also supported, but are not resumable. It writes to `./config/<network>/snapshots` by
+default.
 
 ```bash
-NETWORK="mainnet"              # mainnet or testnet
-SNAPSHOT_SOURCE="observer-0"   # upstream snapshot producer
-
-scripts/download-snapshot.sh \
-  --env "$NETWORK" \
-  --prefix "$NETWORK/$SNAPSHOT_SOURCE/" \
-  --latest
+NETWORK="mainnet"
+scripts/download-snapshot.sh --env "$NETWORK" --latest
 ```
 
 With an AWS profile:
 
 ```bash
-scripts/download-snapshot.sh \
-  --env "$NETWORK" \
-  --prefix "$NETWORK/$SNAPSHOT_SOURCE/" \
-  --latest \
-  --profile plasma-snapshots
+scripts/download-snapshot.sh --env "$NETWORK" --latest --profile plasma-snapshots
 ```
 
 List or select a specific date:
 
 ```bash
-scripts/download-snapshot.sh --env "$NETWORK" --prefix "$NETWORK/$SNAPSHOT_SOURCE/" --list
-scripts/download-snapshot.sh --env "$NETWORK" --prefix "$NETWORK/$SNAPSHOT_SOURCE/" --folder 06-06-26
+scripts/download-snapshot.sh --env "$NETWORK" --list
+scripts/download-snapshot.sh --env "$NETWORK" --folder 06-06-26
+```
+
+For faster download speeds, use [s5cmd](https://github.com/peak/s5cmd)
+
+```bash
+scripts/download-snapshot.sh --env "$NETWORK" --latest --use-s5cmd # Requires s5cmd in $PATH
 ```
 
 Manual AWS CLI fallback:
 
 ```bash
 BUCKET="plasma-$NETWORK-db-backups"
+NETWORK="mainnet"
+SNAPSHOT_SOURCE="observer-0"
 DATE="06-06-26"
 
 aws s3 cp \
