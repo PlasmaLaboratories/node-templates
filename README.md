@@ -29,10 +29,10 @@
       - [Sync Issues](#sync-issues)
   - [Monitoring](#monitoring)
   - [Performance](#performance)
-  - [Database Snapshots](#database-snapshots)
+  - [Database Snapshots (optional)](#database-snapshots-optional)
     - [Prerequisites](#prerequisites)
     - [Step 1: Download](#step-1-download)
-    - [Step 2: Import snapshots (optional)](#step-2-import-snapshots-optional)
+    - [Step 2: Import snapshots](#step-2-import-snapshots)
       - [Manual snapshot import (alternative)](#manual-snapshot-import-alternative)
     - [Snapshot troubleshooting](#snapshot-troubleshooting)
       - [Access Denied](#access-denied)
@@ -204,7 +204,7 @@ Monitor your node's health:
 - Monitor CPU usage during initial sync
 - Consider increasing ulimits for production deployments
 
-## Database Snapshots
+## Database Snapshots (optional)
 
 Plasma publishes daily database snapshots for all networks. Snapshots let you bootstrap a new node
 in hours instead of syncing from genesis, which can take days to weeks.
@@ -227,8 +227,8 @@ plasma-mainnet-db-backups/
 For example:
 
 ```
-s3://plasma-devnet-db-backups/devnet/observer-0/06-22-26/consensus-backup-20260606-020000.tar.gz
-s3://plasma-devnet-db-backups/devnet/observer-0/06-22-26/execution-backup-20260606-020000.tar.gz
+s3://plasma-mainnet-db-backups/mainnet/observer-0/06-22-26/consensus-backup-20260606-020000.tar.gz
+s3://plasma-mainnet-db-backups/mainnet/observer-0/06-22-26/execution-backup-20260606-020000.tar.gz
 ```
 
 ### Prerequisites
@@ -278,8 +278,8 @@ scripts/download-snapshot.sh --env "$NETWORK" --latest --use-s5cmd # Requires s5
 Manual AWS CLI fallback:
 
 ```bash
-BUCKET="plasma-$NETWORK-db-backups"
 NETWORK="mainnet"
+BUCKET="plasma-$NETWORK-db-backups"
 SNAPSHOT_SOURCE="observer-0"
 DATE="06-06-26"
 
@@ -291,7 +291,7 @@ aws s3 cp \
   --request-payer requester
 ```
 
-### Step 2: Import snapshots (optional)
+### Step 2: Import snapshots
 
 If a snapshot exists, the compose stack imports it **automatically**. Two one-shot services
 `import-consensus-snapshot` and `import-execution-snapshot` run before the node on every
@@ -299,9 +299,11 @@ If a snapshot exists, the compose stack imports it **automatically**. Two one-sh
 When a node database already exists (e.g. restarting an existing node), or when no snapshot is
 present in the `SNAPSHOT_DIRECTORY`, these services exit and the node starts normally.
 
-`SNAPSHOT_DIRECTORY` defaults to `./config/<network>/snapshots` (resolved from the
-repository root) — the same directory that `download-snapshot.sh` writes to.
-Point it elsewhere by editing `config/<network>/.env` or via the environment.
+> :information_source: Note:
+>
+> `SNAPSHOT_DIRECTORY` defaults to `./config/<network>/snapshots`, which is the same directory that
+> `download-snapshot.sh` writes to. Point it elsewhere by editing `config/<network>/.env` or via the
+> environment.
 
 #### Manual snapshot import (alternative)
 
@@ -358,7 +360,8 @@ AWS credentials not configured, run `aws sts get-caller-identity` to verify your
 
 #### Empty bucket listing
 
-Older backups are automatically cleaned up. If the bucket appears empty, a backup cycle may be in progress — check back later.
+Older backups are automatically cleaned up. If the bucket appears empty, a backup cycle may be in
+progress, check back later.
 
 #### Wrong prefix
 
