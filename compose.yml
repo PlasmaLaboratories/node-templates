@@ -104,6 +104,11 @@ services:
     volumes:
       - consensus-data:/consensus:rw
       - jwt-secret:/jwt:rw
+    depends_on:
+      import-consensus-snapshot:
+        condition: service_completed_successfully
+      import-execution-snapshot:
+        condition: service_completed_successfully
 
   init-consensus:
     image: ${CONSENSUS_IMAGE}:${CONSENSUS_TAG}
@@ -213,8 +218,6 @@ services:
     depends_on:
       init-execution:
         condition: service_completed_successfully
-      import-execution-snapshot:
-        condition: service_completed_successfully
     networks:
       - plasma
 
@@ -248,8 +251,6 @@ services:
       - ./config/${NETWORK}/genesis.json:/node/genesis.json:ro
     depends_on:
       init-consensus:
-        condition: service_completed_successfully
-      import-consensus-snapshot:
         condition: service_completed_successfully
       plasma-execution:
         condition: service_healthy
