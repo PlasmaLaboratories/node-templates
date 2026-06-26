@@ -2,13 +2,39 @@
 
 Templates and deployment configurations for running Plasma non-validator (observer) nodes.
 
+- [Plasma Non-Validator Templates](#plasma-non-validator-templates)
+  - [Networks](#networks)
+  - [Quick Start](#quick-start)
+  - [Directory Structure](#directory-structure)
+  - [Configuration](#configuration)
+    - [Consensus Configuration](#consensus-configuration)
+    - [Peer Discovery](#peer-discovery)
+    - [Ports](#ports)
+  - [Usage](#usage)
+    - [Node troubleshooting](#node-troubleshooting)
+      - [Sync Issues](#sync-issues)
+  - [Monitoring](#monitoring)
+  - [Performance](#performance)
+  - [Database Snapshots](#database-snapshots)
+    - [Prerequisites](#prerequisites)
+    - [Snapshot Buckets](#snapshot-buckets)
+    - [Bucket Contents](#bucket-contents)
+    - [Step 1: Download](#step-1-download)
+    - [Step 2: Import snapshots (optional)](#step-2-import-snapshots-optional)
+      - [Manual snapshot import (alternative)](#manual-snapshot-import-alternative)
+    - [Snapshot troubleshooting](#snapshot-troubleshooting)
+      - [Access Denied](#access-denied)
+      - [403 Forbidden](#403-forbidden)
+      - [Empty bucket listing](#empty-bucket-listing)
+      - [Wrong prefix](#wrong-prefix)
+
 ## Networks
 
-| Network | Chain ID | Consensus Image           | Consensus Version | Execution Version | Bootstrap Nodes             | GHCR Auth Required |
-| ------- | -------- | ------------------------- | ----------------- | ----------------- | --------------------------- | ------------------ |
-| mainnet | 9745     | `plasma-consensus-public` | 0.15.0            | Reth v1.8.3       | 16 consensus + 16 execution | No                 |
-| testnet | 9746     | `plasma-consensus-public` | 0.15.0            | Reth v1.8.3       | 16 consensus + 16 execution | No                 |
-| devnet  | 9747     | `plasma-consensus-public` | 0.15.0            | Reth v1.8.3       | 3 consensus + 3 execution   | No                 |
+| Network | Chain ID | Consensus | Execution   | GHCR Auth Required |
+| ------- | -------- | --------- | ----------- | ------------------ |
+| mainnet | 9745     | 0.15.0    | Reth v1.8.3 | No                 |
+| testnet | 9746     | 0.15.0    | Reth v1.8.3 | No                 |
+| devnet  | 9747     | 0.15.0    | Reth v1.8.3 | No                 |
 
 ## Quick Start
 
@@ -19,11 +45,13 @@ cd non-validator-templates
 
 # No GHCR login is required; `plasma-consensus-public` is publicly accessible
 
-# Start a node — defaults to devnet (the root .env symlinks to config/devnet/.env)
+# Start a node, defaults to devnet (the root .env symlinks to config/devnet/.env)
 docker compose up -d
 
-# For testnet or mainnet, select the network with --env-file
+# For testnet or mainnet, override the network with --env-file
 docker compose --env-file config/testnet/.env up -d
+# Alternatively, update the symlink to change the default network to testnet or mainnet
+ln -sf config/testnet/.env .env
 
 # Optional: start the node together with monitoring (Prometheus + Grafana).
 # Combining both files keeps them in one project/network so Prometheus can
@@ -43,14 +71,14 @@ docker compose logs -f plasma-consensus
 ## Directory Structure
 
 ```
-compose.yml                 # Single, network-agnostic service definitions
-.env -> config/devnet/.env  # Default network (devnet); override with --env-file
-monitoring/                 # Monitoring stack (compose.yml + Prometheus & Grafana configs)
-scripts/                    # download-snapshot.sh
+compose.yml                 # Network-agnostic service definitions
+.env -> config/devnet/.env  # Symbolic link to default network, override with --env-file
+monitoring/                 # Monitoring stack (separate compose.yml + Prometheus & Grafana configs)
+scripts/                    # Scripts such as download-snapshot.sh
 config/                     # Per-network configuration and data
-├── {network}/
-│   ├── .env                # NETWORK, image tags, SNAPSHOT_DIRECTORY, EXECUTION_TRUSTED_PEERS
-│   ├── non-validator.toml  # Consensus config (incl. this network's bootstrap nodes)
+├── {network}/              # Networks: devnet, testnet, mainnet
+│   ├── .env                # Configure network, images, tags, snapshots, trusted peers
+│   ├── non-validator.toml  # Consensus config, including this network's bootstrap nodes
 │   ├── genesis.json        # Chain genesis
 │   ├── keys/               # BLS12-381 validator public keys
 │   └── identities/         # Validator identity files
@@ -58,23 +86,23 @@ config/                     # Per-network configuration and data
 
 ## Configuration
 
-Each network's config lives under `config/{network}/`. The `.env` holds the
-network name, the image versions and tags, the snapshot directory
-(`SNAPSHOT_DIRECTORY`), and the execution trusted-peers list
-(`EXECUTION_TRUSTED_PEERS`); `non-validator.toml` holds the consensus
-configuration including that network's bootstrap nodes. One shared `compose.yml`
-serves all networks. The validator keys, identities, and genesis stay as files
-because the consensus client (0.15.0) reads them from disk.
+Each network's config lives under `config/{network}/`. The `.env` holds the network name, the image
+versions and tags, the snapshot directory (`SNAPSHOT_DIRECTORY`), and the execution trusted-peers
+list (`EXECUTION_TRUSTED_PEERS`); `non-validator.toml` holds the consensus configuration including
+that network's bootstrap nodes. One shared `compose.yml` serves all networks. The validator keys,
+identities, and genesis stay as files because the consensus client (0.15.0) reads them from disk.
 
 > Execution peers are passed to reth on the command line via
 > `EXECUTION_TRUSTED_PEERS`, but consensus bootstrap nodes live in
 > `non-validator.toml`: consensus 0.15.0 has no CLI/env option for them, so they
 > must be in the config file the observer reads.
 
-### Consensus Configuration (`non-validator.toml`)
+### Consensus Configuration
 
-Each network has its own `config/{network}/non-validator.toml` (the files are
-identical apart from the per-network `[network.bootstrap_nodes.*]` entries). Key sections:
+Each network has its own `config/{network}/non-validator.toml`. The files are
+identical apart from the per-network `[network.bootstrap_nodes.*]` entries.
+
+Key sections:
 
 | Section                       | Fields                                                                                       | Description                       |
 | ----------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------- |
@@ -87,7 +115,8 @@ identical apart from the per-network `[network.bootstrap_nodes.*]` entries). Key
 
 ### Peer Discovery
 
-The checked-in templates use `plasma-consensus-public:0.15.0` with peer discovery enabled. External addresses can be configured for nodes behind NAT:
+The checked-in templates use `plasma-consensus-public:0.15.0` with peer discovery enabled. External
+addresses can be configured for nodes behind NAT:
 
 ```toml
 [network]
@@ -115,38 +144,34 @@ The port defaults to `p2p_port` if not provided.
 
 ## Usage
 
-Run from the repository root. Export the env file once to avoid repeating it:
+Run from the repository root.
 
 ```bash
-export NETWORK={network}                                          # mainnet, testnet, or devnet
-
-docker compose --env-file config/$NETWORK/.env up -d                  # Start
-docker compose --env-file config/$NETWORK/.env -f compose.yml -f monitoring/compose.yml up -d   # Start with monitoring
-docker compose --env-file config/$NETWORK/.env logs -f                # Logs
-docker compose --env-file config/$NETWORK/.env down                   # Stop
-docker compose --env-file config/$NETWORK/.env down -v && \
-docker compose --env-file config/$NETWORK/.env up -d                # Clean restart
+# Run a node on the default network and follow logs
+docker compose up
+# Run a node on the testnet network in the background
+docker compose --env-file config/testnet/.env up -d
+# Change the default network to testnet, persists on disk
+ln -sf config/testnet/.env .env
+# Run the monitoring stack
+docker compose -f monitoring/compose.yml up -d
+# Run a node on the default network with monitoring
+docker compose -f compose.yml -f monitoring/compose.yml up -d
+# Display the 1000 most recent log entries and follow logs
+docker compose logs -n 1000 -f
+# Stop the node on the default network
+docker compose down
+# Stop node, delete all data volumes and restart clean
+docker compose down -v && docker compose up -d
 ```
 
-## Troubleshooting
+### Node troubleshooting
 
-### Container Startup Failures
+#### Sync Issues
 
-```bash
-docker compose logs <service-name>
-```
-
-### Image Pull Issues
+Check execution client sync status:
 
 ```bash
-# GHCR authentication is not required for `plasma-consensus-public`
-docker pull ghcr.io/plasmalaboratories/plasma-consensus-public:0.15.0
-```
-
-### Sync Issues
-
-```bash
-# Check execution client sync status
 curl -s -X POST -H "Content-Type: application/json" \
   --data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}' \
   http://localhost:8545
@@ -169,9 +194,12 @@ Monitor your node's health:
 
 ## Database Snapshots
 
-Plasma publishes daily database snapshots for **mainnet** and **testnet**. Snapshots let you bootstrap a new node in hours instead of syncing from genesis (which can take days to weeks).
+Plasma publishes daily database snapshots for **mainnet** and **testnet**. Snapshots let you
+bootstrap a new node in hours instead of syncing from genesis, which can take days to weeks.
 
-Each snapshot contains two files — the consensus-layer database and the execution-layer database — uploaded to a requester-pays S3 bucket. You need an AWS account; standard S3 data-transfer rates apply.
+Each snapshot contains two files, the consensus-layer database and the execution-layer database.
+They are uploaded to a _requester-pays_ S3 bucket. You need an AWS account; standard S3
+data-transfer rates apply.
 
 ### Prerequisites
 
@@ -181,7 +209,9 @@ Each snapshot contains two files — the consensus-layer database and the execut
 | AWS CLI     | v2 recommended (`aws --version`)                                       |
 | Disk space  | **Mainnet:** ~400 GB free &nbsp;&bull;&nbsp; **Testnet:** ~100 GB free |
 
-> **Cost note:** Data transfer out from `us-east-2` is ~$0.09/GB for the first 10 TB/month. Transferring from an EC2 instance **in the same region** is free — running your node in `us-east-2` is the most cost-effective option.
+> **Cost note:** Data transfer out from `us-east-2` is ~$0.09/GB for the first 10 TB/month.
+> Transferring from an EC2 instance **in the same region** is free. Running your node in
+> `us-east-2` is the most cost-effective option.
 
 ### Snapshot Buckets
 
@@ -213,9 +243,10 @@ plasma-mainnet-db-backups/
 | **Consensus database**             | Consensus-layer database snapshot                   |
 | **Execution database** (`.tar.gz`) | Tar archive of the reth execution `data/` directory |
 
-### Step 1 — Download
+### Step 1: Download
 
-Use the helper script for large, restartable requester-pays downloads. It writes to `./config/<network>/snapshots` by default.
+Use the helper script for large, resumable requester-pays downloads. It writes to
+`./config/<network>/snapshots` by default.
 
 ```bash
 NETWORK="mainnet"              # mainnet or testnet
@@ -258,39 +289,23 @@ aws s3 cp \
   --request-payer requester
 ```
 
-### Step 2 — Import snapshots (optional)
+### Step 2: Import snapshots (optional)
 
-The compose stack imports snapshots **automatically**. Two one-shot services
+If a snapshot exists, the compose stack imports it **automatically**. Two one-shot services
 `import-consensus-snapshot` and `import-execution-snapshot` run before the node on every
 `docker compose up` and import the newest `*-backup-*.tar.gz` they find in `SNAPSHOT_DIRECTORY`.
-They are safe to leave enabled: each one no-ops when the database already exists or when no snapshot
-is present, so a node with a populated database or an empty `SNAPSHOT_DIRECTORY` starts normally.
+When a node database already exists (e.g. restarting an existing node), or when no snapshot is
+present in the `SNAPSHOT_DIRECTORY`, these services exit and the node starts normally.
 
 `SNAPSHOT_DIRECTORY` defaults to `./config/<network>/snapshots` (resolved from the
 repository root) — the same directory that `download-snapshot.sh` writes to.
 Point it elsewhere by editing `config/<network>/.env` or via the environment.
 
-```bash
-NETWORK="mainnet"   # run from the repository root
-
-# Fresh node: download (Step 1) then bring the stack up, import runs first.
-docker compose --env-file "config/$NETWORK/.env" up -d
-```
-
-> The `import-*-snapshot` services use the consensus/execution images and tags from
-> `config/<network>/.env`, so they always match the node binaries that read the imported database.
-
-#### Manual import (alternative)
+#### Manual snapshot import (alternative)
 
 To restore by hand instead, e.g. into volumes managed outside this compose project, run the steps
 below. Note the compose project is named after the network (`name: ${NETWORK}`), so the volumes are
 `<network>_consensus-data` and `<network>_execution-data` (e.g. `mainnet_consensus-data`).
-
-```bash
-NETWORK="mainnet"   # run from the repository root
-docker compose --env-file "config/$NETWORK/.env" down
-BACKUP_DIR="$(cd "config/$NETWORK/snapshots" && pwd)"
-```
 
 Restore consensus as `/consensus/data.mdb`, preserving the node identity files:
 
@@ -329,13 +344,22 @@ docker compose --env-file "config/$NETWORK/.env" up -d
 docker compose --env-file "config/$NETWORK/.env" ps
 ```
 
-### Snapshot Troubleshooting
+### Snapshot troubleshooting
 
-| Issue                | Cause / Fix                                                                                                                    |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `Access Denied`      | You must include `--request-payer requester` on every command. The bucket rejects requests without it.                         |
-| `403 Forbidden`      | AWS credentials not configured. Run `aws sts get-caller-identity` to verify you have a valid session.                          |
-| Empty bucket listing | Older backups are automatically cleaned up. If the bucket appears empty, a backup cycle may be in progress — check back later. |
-| Wrong prefix         | Use `<network>/<snapshot-source>/<date>/`, for example `mainnet/observer-0/06-06-26/`.                                         |
+#### Access Denied
+
+You must include `--request-payer requester` on every command.
+
+#### 403 Forbidden
+
+AWS credentials not configured, run `aws sts get-caller-identity` to verify your session is valid.
+
+#### Empty bucket listing
+
+Older backups are automatically cleaned up. If the bucket appears empty, a backup cycle may be in progress — check back later.
+
+#### Wrong prefix
+
+Use `<network>/<snapshot-source>/<date>/`, for example `mainnet/observer-0/06-06-26/`
 
 ---
