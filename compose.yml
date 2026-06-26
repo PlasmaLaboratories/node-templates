@@ -5,7 +5,7 @@ services:
   # existing database/lock is cleared first; node identity files (generated later
   # by openssl-init) are left untouched.
   import-consensus-snapshot:
-    image: ${PLASMA_CONSENSUS_IMAGE}:${PLASMA_CONSENSUS_TAG}
+    image: ${CONSENSUS_IMAGE}:${CONSENSUS_TAG}
     user: "0:0"
     restart: "no"
     entrypoint: ["/bin/bash", "-c"]
@@ -18,7 +18,7 @@ services:
         fi
         archive="$$(ls -1 /snapshots/consensus-backup-*.tar.gz 2>/dev/null | sort | tail -n 1 || true)"
         if [ -z "$$archive" ]; then
-          echo "INFO: No consensus-backup-*.tar.gz found in /snapshots (SNAPSHOT_DIR=$$SNAPSHOT_DIR)" >&2
+          echo "INFO: No consensus-backup-*.tar.gz found in /snapshots (SNAPSHOT_DIRECTORY=$$SNAPSHOT_DIRECTORY)" >&2
           echo "INFO: Skipping consensus database restore" >&2
           exit 0
         fi
@@ -36,14 +36,14 @@ services:
     container_name: import-consensus-snapshot
     volumes:
       - consensus-data:/consensus:rw
-      - ${SNAPSHOT_DIR}:/snapshots:ro
+      - ${SNAPSHOT_DIRECTORY}:/snapshots:ro
 
   # Execution snapshot is a tar of the reth data/ directory. Stripping one leading
   # component drops the data/ prefix so contents land directly under the reth
   # datadir (/execution/db, /execution/static_files, ...). A pre-existing reth
   # discovery secret is preserved if the snapshot does not carry one.
   import-execution-snapshot:
-    image: ${PLASMA_EXECUTION_IMAGE}:${PLASMA_EXECUTION_TAG}
+    image: ${EXECUTION_IMAGE}:${EXECUTION_TAG}
     user: "0:0"
     restart: "no"
     entrypoint: ["/bin/bash", "-c"]
@@ -56,7 +56,7 @@ services:
         fi
         archive="$$(ls -1 /snapshots/execution-backup-*.tar.gz 2>/dev/null | sort | tail -n 1 || true)"
         if [ -z "$$archive" ]; then
-          echo "INFO: No execution-backup-*.tar.gz found in /snapshots (SNAPSHOT_DIR=$$SNAPSHOT_DIR)" >&2
+          echo "INFO: No execution-backup-*.tar.gz found in /snapshots (SNAPSHOT_DIRECTORY=$$SNAPSHOT_DIRECTORY)" >&2
           echo "INFO: Skipping execution database restore" >&2
           exit 0
         fi
@@ -78,7 +78,7 @@ services:
     container_name: import-execution-snapshot
     volumes:
       - execution-data:/execution:rw
-      - ${SNAPSHOT_DIR}:/snapshots:ro
+      - ${SNAPSHOT_DIRECTORY}:/snapshots:ro
 
   openssl-init:
     image: ${OPEN_SSL_IMAGE}:${OPEN_SSL_TAG}
@@ -106,7 +106,7 @@ services:
       - jwt-secret:/jwt:rw
 
   init-consensus:
-    image: ${PLASMA_CONSENSUS_IMAGE}:${PLASMA_CONSENSUS_TAG}
+    image: ${CONSENSUS_IMAGE}:${CONSENSUS_TAG}
     user: "0:0"
     entrypoint: ["/bin/bash", "-c"]
     command:
@@ -137,7 +137,7 @@ services:
         condition: service_completed_successfully
 
   init-execution:
-    image: ${PLASMA_EXECUTION_IMAGE}:${PLASMA_EXECUTION_TAG}
+    image: ${EXECUTION_IMAGE}:${EXECUTION_TAG}
     user: "0:0"
     entrypoint: ["/bin/bash", "-c"]
     command:
@@ -162,7 +162,7 @@ services:
         condition: service_completed_successfully
 
   plasma-execution:
-    image: ${PLASMA_EXECUTION_IMAGE}:${PLASMA_EXECUTION_TAG}
+    image: ${EXECUTION_IMAGE}:${EXECUTION_TAG}
     user: "0:0"
     entrypoint: ["/bin/bash", "-c"]
     command:
@@ -170,7 +170,7 @@ services:
         reth node \
           --chain /node/genesis.json \
           --datadir /execution \
-          --trusted-peers "$$ENODES" \
+          --trusted-peers "$$EXECUTION_TRUSTED_PEERS" \
           --authrpc.jwtsecret /jwt/jwt.hex \
           --authrpc.addr 0.0.0.0 \
           --authrpc.port 8551 \
@@ -219,7 +219,7 @@ services:
       - plasma
 
   plasma-consensus:
-    image: ${PLASMA_CONSENSUS_IMAGE}:${PLASMA_CONSENSUS_TAG}
+    image: ${CONSENSUS_IMAGE}:${CONSENSUS_TAG}
     user: "0:0"
     entrypoint: ["/bin/bash", "-c"]
     command:

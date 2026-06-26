@@ -49,7 +49,7 @@ monitoring/                 # Monitoring stack (compose.yml + Prometheus & Grafa
 scripts/                    # download-snapshot.sh
 config/                     # Per-network configuration and data
 ├── {network}/
-│   ├── .env                # Image tags, NETWORK, SNAPSHOT_DIR, ENODES
+│   ├── .env                # NETWORK, image tags, SNAPSHOT_DIRECTORY, EXECUTION_TRUSTED_PEERS
 │   ├── non-validator.toml  # Consensus config (incl. this network's bootstrap nodes)
 │   ├── genesis.json        # Chain genesis
 │   ├── keys/               # BLS12-381 validator public keys
@@ -58,16 +58,18 @@ config/                     # Per-network configuration and data
 
 ## Configuration
 
-Each network's config lives under `config/{network}/`. The `.env` holds the image
-versions and tags, the network name, the snapshot directory, and the execution
-`ENODES` list; `non-validator.toml` holds the consensus configuration including
-that network's bootstrap nodes. One shared `compose.yml` serves all
-networks. The validator keys, identities, and genesis stay as files because the
-consensus client (0.15.0) reads them from disk.
+Each network's config lives under `config/{network}/`. The `.env` holds the
+network name, the image versions and tags, the snapshot directory
+(`SNAPSHOT_DIRECTORY`), and the execution trusted-peers list
+(`EXECUTION_TRUSTED_PEERS`); `non-validator.toml` holds the consensus
+configuration including that network's bootstrap nodes. One shared `compose.yml`
+serves all networks. The validator keys, identities, and genesis stay as files
+because the consensus client (0.15.0) reads them from disk.
 
-> Execution peers are passed to reth on the command line via `ENODES`, but
-> consensus bootstrap nodes live in `non-validator.toml`: consensus 0.15.0 has no
-> CLI/env option for them, so they must be in the config file the observer reads.
+> Execution peers are passed to reth on the command line via
+> `EXECUTION_TRUSTED_PEERS`, but consensus bootstrap nodes live in
+> `non-validator.toml`: consensus 0.15.0 has no CLI/env option for them, so they
+> must be in the config file the observer reads.
 
 ### Consensus Configuration (`non-validator.toml`)
 
@@ -260,11 +262,11 @@ aws s3 cp \
 
 The compose stack imports snapshots **automatically**. Two one-shot services
 `import-consensus-snapshot` and `import-execution-snapshot` run before the node on every
-`docker compose up` and import the newest `*-backup-*.tar.gz` they find in `SNAPSHOT_DIR`.
+`docker compose up` and import the newest `*-backup-*.tar.gz` they find in `SNAPSHOT_DIRECTORY`.
 They are safe to leave enabled: each one no-ops when the database already exists or when no snapshot
-is present, so a node with a populated database or an empty `SNAPSHOT_DIR` starts normally.
+is present, so a node with a populated database or an empty `SNAPSHOT_DIRECTORY` starts normally.
 
-`SNAPSHOT_DIR` defaults to `./config/<network>/snapshots` (resolved from the
+`SNAPSHOT_DIRECTORY` defaults to `./config/<network>/snapshots` (resolved from the
 repository root) — the same directory that `download-snapshot.sh` writes to.
 Point it elsewhere by editing `config/<network>/.env` or via the environment.
 
