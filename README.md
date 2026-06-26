@@ -31,8 +31,6 @@
   - [Performance](#performance)
   - [Database Snapshots](#database-snapshots)
     - [Prerequisites](#prerequisites)
-    - [Snapshot Buckets](#snapshot-buckets)
-    - [Bucket Contents](#bucket-contents)
     - [Step 1: Download](#step-1-download)
     - [Step 2: Import snapshots (optional)](#step-2-import-snapshots-optional)
       - [Manual snapshot import (alternative)](#manual-snapshot-import-alternative)
@@ -212,8 +210,26 @@ Plasma publishes daily database snapshots for all networks. Snapshots let you bo
 in hours instead of syncing from genesis, which can take days to weeks.
 
 Each snapshot contains two files, the consensus-layer database and the execution-layer database.
-They are uploaded to a _requester-pays_ S3 bucket. You need an AWS account; standard S3
+They are uploaded to a _requester-pays_ S3 bucket. You need an AWS account, standard S3
 data-transfer rates apply.
+
+Backups are organized by network, snapshot source, and date (`MM-DD-YY`):
+
+```
+plasma-mainnet-db-backups/
+└── mainnet/
+    └── observer-0/
+        └── 06-06-26/
+            ├── consensus-backup-20260606-020000.tar.gz
+            └── execution-backup-20260606-020000.tar.gz
+```
+
+For example:
+
+```
+s3://plasma-devnet-db-backups/devnet/observer-0/06-22-26/consensus-backup-20260606-020000.tar.gz
+s3://plasma-devnet-db-backups/devnet/observer-0/06-22-26/execution-backup-20260606-020000.tar.gz
+```
 
 ### Prerequisites
 
@@ -228,36 +244,6 @@ data-transfer rates apply.
 > **Cost note:** Data transfer out from `us-east-2` is ~$0.09/GB for the first 10 TB/month.
 > Transferring from an EC2 instance **in the same region** is free. Running your node in
 > `us-east-2` is the most cost-effective option.
-
-### Snapshot Buckets
-
-| Property           | Mainnet                             | Testnet                             |
-| ------------------ | ----------------------------------- | ----------------------------------- |
-| **Bucket**         | `plasma-mainnet-db-backups`         | `plasma-testnet-db-backups`         |
-| **Prefix format**  | `mainnet/<snapshot-source>/<date>/` | `testnet/<snapshot-source>/<date>/` |
-| **Current source** | `observer-0`                        | `observer-0`                        |
-| **Region**         | `us-east-2` (Ohio)                  | `us-east-2` (Ohio)                  |
-| **Access model**   | Requester-pays                      | Requester-pays                      |
-| **Backup cadence** | Daily                               | Daily at 02:00 UTC                  |
-| **Transport**      | TLS required                        | TLS required                        |
-
-### Bucket Contents
-
-Backups are organized by network, snapshot source, and date (`MM-DD-YY`):
-
-```
-plasma-mainnet-db-backups/
-└── mainnet/
-    └── observer-0/
-        └── 06-06-26/
-            ├── consensus-backup-20260606-020000.tar.gz
-            └── execution-backup-20260606-020000.tar.gz
-```
-
-| File                               | Description                                         |
-| ---------------------------------- | --------------------------------------------------- |
-| **Consensus database**             | Consensus-layer database snapshot                   |
-| **Execution database** (`.tar.gz`) | Tar archive of the reth execution `data/` directory |
 
 ### Step 1: Download
 
