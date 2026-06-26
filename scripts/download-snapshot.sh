@@ -24,6 +24,7 @@ Options:
   --dry-run             Show what would be downloaded without downloading.
   --keep-parts          Keep part files after assembling final files.
   --no-gzip-test        Skip gzip validation for files ending in .gz.
+  --use-s5cmd           Download with s5cmd, which is faster than aws s3 cli. Requires s5cmd on PATH.
   --list                List discovered snapshot folders and exit.
   -h, --help            Show this help.
 
@@ -37,6 +38,7 @@ Examples:
   scripts/download-snapshot.sh --env mainnet --prefix mainnet/observer-0/ --latest --profile plasma-snapshots
   scripts/download-snapshot.sh --env mainnet --folder 06-06-26 --prefix mainnet/observer-0/
   scripts/download-snapshot.sh --env testnet --prefix testnet/observer-0/ --latest
+  scripts/download-snapshot.sh --env mainnet --prefix mainnet/observer-0/ --latest --use-s5cmd
 EOF
 }
 
@@ -127,6 +129,7 @@ KEEP_PARTS=0
 GZIP_TEST=1
 LATEST=0
 LIST_ONLY=0
+USE_S5CMD=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -180,6 +183,10 @@ while [[ $# -gt 0 ]]; do
     ;;
   --list)
     LIST_ONLY=1
+    shift
+    ;;
+  --use-s5cmd)
+    USE_S5CMD=1
     shift
     ;;
   -h | --help)
@@ -475,8 +482,58 @@ download_object() {
   info "done: $dest"
 }
 
+download_with_s5cmd() {
+  local snapshot_prefix="$1"
+  local src="s3://$BUCKET/${snapshot_prefix}*.tar.gz"
+
+  ensure_login
+  mkdir -p "$DESTDIR"
+
+  info "Downloading with s5cmd: $src -> $DESTDIR/"
+  if ((DRY_RUN)); then
+    info "[dry-run] s5cmd --request-payer requester cp --concurrency 250 '$src' '$DESTDIR/'"
+    return 0
+  fi
+
+  # s5cmd has its own AWS credential resolution and may not understand SSO profiles. Bridge by
+  # exporting the AWS CLI's already-resolved temporary credentials into the environment. Fall back
+  # to s5cmd's own resolution (with --profile) if export fails.
+  local cred_env=""
+  local -a s5_global=(--request-payer requester)
+  if cred_env="$(aws "${AWS_GLOBAL_ARGS[@]}" configure export-credentials --format env 2>/dev/null)" && [[ -n "$cred_env" ]]; then
+    :
+  else
+    cred_env=""
+    [[ -n "$PROFILE" ]] && s5_global+=(--profile "$PROFILE")
+  fi
+
+  (
+    if [[ -n "$cred_env" ]]; then
+      unset AWS_PROFILE AWS_DEFAULT_PROFILE
+      eval "$cred_env"
+    fi
+    export AWS_REGION="$REGION"
+    s5cmd "${s5_global[@]}" cp --concurrency 250 "$src" "$DESTDIR/"
+  )
+
+  if ((GZIP_TEST)); then
+    local f
+    for f in "$DESTDIR"/*.tar.gz; do
+      [[ -e "$f" ]] || continue
+      info "gzip test: $f"
+      gzip -t "$f"
+    done
+  fi
+
+  info "done: $DESTDIR"
+}
+
 command -v aws >/dev/null 2>&1 || die "aws CLI is required"
 command -v gzip >/dev/null 2>&1 || die "gzip is required"
+if ((USE_S5CMD)); then
+  command -v s5cmd >/dev/null 2>&1 ||
+    die "s5cmd not found on PATH. Install it: https://github.com/peak/s5cmd#installation"
+fi
 
 if ((LIST_ONLY)); then
   discover_snapshot_prefixes "$PREFIX"
@@ -486,6 +543,12 @@ fi
 SNAPSHOT_PREFIX="$(resolve_snapshot_prefix)"
 info "Using snapshot prefix: s3://$BUCKET/$SNAPSHOT_PREFIX"
 info "Destination: $DESTDIR"
+
+if ((USE_S5CMD)); then
+  download_with_s5cmd "$SNAPSHOT_PREFIX"
+  exit 0
+fi
+
 info "Chunk size: $(human_bytes "$CHUNK_SIZE")"
 
 mapfile -t OBJECTS < <(list_objects_for_prefix "$SNAPSHOT_PREFIX")
