@@ -13,25 +13,25 @@ services:
       - |
         set -euo pipefail
         if [ -f /consensus/data.mdb ]; then
-          echo "INFO: Consensus database already exists at /consensus/data.mdb; skipping restore" >&2
+          echo "INFO Consensus database already exists at /consensus/data.mdb; skipping restore" >&2
           exit 0
         fi
         archive="$$(ls -1 /snapshots/consensus-backup-*.tar.gz 2>/dev/null | sort | tail -n 1 || true)"
         if [ -z "$$archive" ]; then
-          echo "INFO: No consensus-backup-*.tar.gz found in /snapshots (SNAPSHOT_DIRECTORY=$$SNAPSHOT_DIRECTORY)" >&2
-          echo "INFO: Skipping consensus database restore" >&2
+          echo "INFO No consensus-backup-*.tar.gz found in /snapshots (SNAPSHOT_DIRECTORY=$$SNAPSHOT_DIRECTORY)" >&2
+          echo "INFO Skipping consensus database restore" >&2
           exit 0
         fi
-        echo "Restoring consensus database from $$(basename "$$archive")"
+        echo "INFO Restoring consensus database from $$(basename "$$archive")"
         rm -f /consensus/data.mdb /consensus/lock.mdb
         tar -xzf "$$archive" -C /consensus \
           --numeric-owner --same-owner --same-permissions \
           --transform "s,^.*consensus-backup[^/]*$$,data.mdb,"
         if [ ! -f /consensus/data.mdb ]; then
-          echo "ERROR: Restore did not produce /consensus/data.mdb" >&2
+          echo "ERROR Restore did not produce /consensus/data.mdb" >&2
           exit 1
         fi
-        echo "INFO: Consensus database restored to /consensus/data.mdb"
+        echo "INFO Consensus database restored to /consensus/data.mdb"
     env_file: config/${NETWORK}/.env
     container_name: import-consensus-snapshot
     volumes:
@@ -51,16 +51,16 @@ services:
       - |
         set -euo pipefail
         if [ -d /execution/db ]; then
-          echo "INFO: Execution database already exists at /execution/db; skipping restore" >&2
+          echo "INFO Execution database already exists at /execution/db; skipping restore" >&2
           exit 0
         fi
         archive="$$(ls -1 /snapshots/execution-backup-*.tar.gz 2>/dev/null | sort | tail -n 1 || true)"
         if [ -z "$$archive" ]; then
-          echo "INFO: No execution-backup-*.tar.gz found in /snapshots (SNAPSHOT_DIRECTORY=$$SNAPSHOT_DIRECTORY)" >&2
-          echo "INFO: Skipping execution database restore" >&2
+          echo "INFO No execution-backup-*.tar.gz found in /snapshots (SNAPSHOT_DIRECTORY=$$SNAPSHOT_DIRECTORY)" >&2
+          echo "INFO Skipping execution database restore" >&2
           exit 0
         fi
-        echo "INFO: Restoring execution database from $$(basename "$$archive")"
+        echo "INFO Restoring execution database from $$(basename "$$archive")"
         secret=/tmp/discovery-secret
         if [ -f /execution/discovery-secret ]; then cp -p /execution/discovery-secret "$$secret"; fi
         find /execution -mindepth 1 -maxdepth 1 -exec rm -rf {} +
@@ -70,10 +70,10 @@ services:
           cp -p "$$secret" /execution/discovery-secret
         fi
         if [ ! -d /execution/db ]; then
-          echo "ERROR: Restore did not produce /execution/db" >&2
+          echo "ERROR Restore did not produce /execution/db" >&2
           exit 1
         fi
-        echo "INFO: Execution database restored to /execution"
+        echo "INFO Execution database restored to /execution"
     env_file: config/${NETWORK}/.env
     container_name: import-execution-snapshot
     volumes:
@@ -86,19 +86,19 @@ services:
     command:
       - |
         if [ ! -f /jwt/jwt.hex ]; then
-          echo 'Generating jwt secret'
+          echo 'INFO Generating jwt secret'
           openssl rand -hex 32 | tr -d '\n' > /jwt/jwt.hex
         else
-          echo 'JWT secret already exists'
+          echo 'INFO JWT secret already exists'
         fi
         if [ ! -f /consensus/ec-secp256k1-non-validator.pem ]; then
-          echo 'Generating secp256k1 keypair for non-validator'
+          echo 'INFO Generating secp256k1 keypair for non-validator'
           openssl ecparam -name secp256k1 -genkey -noout -out /consensus/ec-secp256k1-non-validator.pem
           openssl ec -in /consensus/ec-secp256k1-non-validator.pem -outform DER -no_public -out /consensus/ec-secp256k1-non-validator.der
         else
-          echo 'secp256k1 keypair for non-validator already exists'
+          echo 'INFO secp256k1 keypair for non-validator already exists'
         fi
-        echo 'OpenSSL initialization completed'
+        echo 'INFO OpenSSL initialization completed'
     env_file: config/${NETWORK}/.env
     container_name: openssl-init
     volumes:
@@ -112,20 +112,20 @@ services:
     command:
       - |
         if [ ! -f /consensus/data.mdb ]; then
-          echo "Generating consensus database for $$NETWORK network"
+          echo "INFO Generating consensus database for $$NETWORK network"
           plasma-cli init \
             --chain /node/genesis.json \
             --data-dir /consensus
         else
-          echo "Consensus database for $$NETWORK network already exists"
+          echo "INFO Consensus database for $$NETWORK network already exists"
         fi
 
         if [ ! -f /config/peer-id.txt ]; then
-          echo "Generating peer ID for non-validator"
+          echo "INFO Generating peer ID for non-validator"
           plasma-cli peer-id \
             --identity-file-path /consensus/ec-secp256k1-non-validator.der > /config/peer-id.txt
         else
-          echo "Peer ID for non-validator already exists"
+          echo "INFO Peer ID for non-validator already exists"
         fi
     env_file: config/${NETWORK}/.env
     volumes:
@@ -143,13 +143,13 @@ services:
     command:
       - |
         if [ ! -f /execution/db/mdbx.dat ]; then
-          echo "Generating execution database for $$NETWORK network"
+          echo "INFO Generating execution database for $$NETWORK network"
           reth init \
             --chain /node/genesis.json \
             --datadir /execution \
             --log.file.directory /execution/log
         else
-          echo "Execution database for $$NETWORK network already exists"
+          echo "INFO Execution database for $$NETWORK network already exists"
         fi
     container_name: init-execution
     env_file: config/${NETWORK}/.env
