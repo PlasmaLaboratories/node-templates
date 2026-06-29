@@ -12,18 +12,19 @@ Downloads Plasma database snapshots from requester-pays S3 buckets using
 restartable byte-range chunks.
 
 Options:
-  --env ENV              Network environment: mainnet, testnet, or devnet.
-  --bucket BUCKET        Override the environment's default S3 bucket.
-  --profile PROFILE      AWS CLI profile to use. Defaults to AWS_PROFILE/default resolution.
-  --region REGION        AWS region. Defaults to AWS_REGION, AWS_DEFAULT_REGION, or us-east-2.
-  --prefix PREFIX        Limit discovery to a bucket prefix, e.g. mainnet/observer-0/.
-  --folder FOLDER        Snapshot folder/date or full prefix, e.g. 06-06-26 or mainnet/observer-0/06-06-26.
+  --env ENV             Network environment: mainnet, testnet, or devnet.
+  --bucket BUCKET       Override the environment's default S3 bucket.
+  --profile PROFILE     AWS CLI profile to use. Defaults to AWS_PROFILE/default resolution.
+  --region REGION       AWS region. Defaults to AWS_REGION, AWS_DEFAULT_REGION, or us-east-2.
+  --prefix PREFIX       Limit discovery to a bucket prefix, e.g. mainnet/observer-0/.
+  --folder FOLDER       Snapshot folder/date or full prefix, e.g. 06-06-26 or mainnet/observer-0/06-06-26.
   --latest              Select the newest discovered snapshot folder without prompting.
-  --dest DIR             Destination directory. Defaults to ./backups/ENV.
-  --chunk-size SIZE      Chunk size for ranged downloads. Defaults to 5GiB. Examples: 1G, 512M.
+  --dest DIR            Destination directory. Defaults to ./config/ENV/snapshots.
+  --chunk-size SIZE     Chunk size for ranged downloads. Defaults to 5GiB. Examples: 1G, 512M.
   --dry-run             Show what would be downloaded without downloading.
   --keep-parts          Keep part files after assembling final files.
   --no-gzip-test        Skip gzip validation for files ending in .gz.
+  --use-s5cmd           Download with s5cmd, which is faster than aws s3 cli. Requires s5cmd on PATH.
   --list                List discovered snapshot folders and exit.
   -h, --help            Show this help.
 
@@ -37,6 +38,7 @@ Examples:
   scripts/download-snapshot.sh --env mainnet --prefix mainnet/observer-0/ --latest --profile plasma-snapshots
   scripts/download-snapshot.sh --env mainnet --folder 06-06-26 --prefix mainnet/observer-0/
   scripts/download-snapshot.sh --env testnet --prefix testnet/observer-0/ --latest
+  scripts/download-snapshot.sh --env mainnet --prefix mainnet/observer-0/ --latest --use-s5cmd
 EOF
 }
 
@@ -77,12 +79,12 @@ parse_size() {
   unit="${BASH_REMATCH[2]:-B}"
 
   case "$unit" in
-    B) multiplier=1 ;;
-    K|KB|KIB) multiplier=1024 ;;
-    M|MB|MIB) multiplier=$((1024 * 1024)) ;;
-    G|GB|GIB) multiplier=$((1024 * 1024 * 1024)) ;;
-    T|TB|TIB) multiplier=$((1024 * 1024 * 1024 * 1024)) ;;
-    *) die "invalid size unit '$unit'" ;;
+  B) multiplier=1 ;;
+  K | KB | KIB) multiplier=1024 ;;
+  M | MB | MIB) multiplier=$((1024 * 1024)) ;;
+  G | GB | GIB) multiplier=$((1024 * 1024 * 1024)) ;;
+  T | TB | TIB) multiplier=$((1024 * 1024 * 1024 * 1024)) ;;
+  *) die "invalid size unit '$unit'" ;;
   esac
 
   printf '%s\n' "$((number * multiplier))"
@@ -107,10 +109,10 @@ ensure_trailing_slash() {
 
 bucket_for_env() {
   case "$1" in
-    mainnet) printf '%s\n' "${PLASMA_MAINNET_BACKUPS_BUCKET:-plasma-mainnet-db-backups}" ;;
-    testnet) printf '%s\n' "${PLASMA_TESTNET_BACKUPS_BUCKET:-plasma-testnet-db-backups}" ;;
-    devnet) printf '%s\n' "${PLASMA_DEVNET_BACKUPS_BUCKET:-plasma-devnet-db-backups}" ;;
-    *) die "unknown env '$1'; expected mainnet, testnet, or devnet" ;;
+  mainnet) printf '%s\n' "${PLASMA_MAINNET_BACKUPS_BUCKET:-plasma-mainnet-db-backups}" ;;
+  testnet) printf '%s\n' "${PLASMA_TESTNET_BACKUPS_BUCKET:-plasma-testnet-db-backups}" ;;
+  devnet) printf '%s\n' "${PLASMA_DEVNET_BACKUPS_BUCKET:-plasma-devnet-db-backups}" ;;
+  *) die "unknown env '$1'; expected mainnet, testnet, or devnet" ;;
   esac
 }
 
@@ -127,68 +129,73 @@ KEEP_PARTS=0
 GZIP_TEST=1
 LATEST=0
 LIST_ONLY=0
+USE_S5CMD=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --env)
-      ENVIRONMENT="${2:-}"
-      shift 2
-      ;;
-    --bucket)
-      BUCKET="${2:-}"
-      shift 2
-      ;;
-    --profile)
-      PROFILE="${2:-}"
-      shift 2
-      ;;
-    --region)
-      REGION="${2:-}"
-      shift 2
-      ;;
-    --prefix)
-      PREFIX="$(ensure_trailing_slash "${2:-}")"
-      shift 2
-      ;;
-    --folder)
-      FOLDER="${2:-}"
-      shift 2
-      ;;
-    --dest)
-      DESTDIR="${2:-}"
-      shift 2
-      ;;
-    --chunk-size)
-      CHUNK_SIZE="$(parse_size "${2:-}")"
-      shift 2
-      ;;
-    --dry-run)
-      DRY_RUN=1
-      shift
-      ;;
-    --keep-parts)
-      KEEP_PARTS=1
-      shift
-      ;;
-    --no-gzip-test)
-      GZIP_TEST=0
-      shift
-      ;;
-    --latest)
-      LATEST=1
-      shift
-      ;;
-    --list)
-      LIST_ONLY=1
-      shift
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      die "unknown argument '$1'"
-      ;;
+  --env)
+    ENVIRONMENT="${2:-}"
+    shift 2
+    ;;
+  --bucket)
+    BUCKET="${2:-}"
+    shift 2
+    ;;
+  --profile)
+    PROFILE="${2:-}"
+    shift 2
+    ;;
+  --region)
+    REGION="${2:-}"
+    shift 2
+    ;;
+  --prefix)
+    PREFIX="$(ensure_trailing_slash "${2:-}")"
+    shift 2
+    ;;
+  --folder)
+    FOLDER="${2:-}"
+    shift 2
+    ;;
+  --dest)
+    DESTDIR="${2:-}"
+    shift 2
+    ;;
+  --chunk-size)
+    CHUNK_SIZE="$(parse_size "${2:-}")"
+    shift 2
+    ;;
+  --dry-run)
+    DRY_RUN=1
+    shift
+    ;;
+  --keep-parts)
+    KEEP_PARTS=1
+    shift
+    ;;
+  --no-gzip-test)
+    GZIP_TEST=0
+    shift
+    ;;
+  --latest)
+    LATEST=1
+    shift
+    ;;
+  --list)
+    LIST_ONLY=1
+    shift
+    ;;
+  --use-s5cmd)
+    USE_S5CMD=1
+    shift
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    die "unknown argument '$1'"
+    ;;
   esac
 done
 
@@ -208,8 +215,8 @@ if [[ -n "$FOLDER" && "$FOLDER" == s3://* ]]; then
 fi
 
 [[ -n "$BUCKET" ]] || die "no default bucket for $ENVIRONMENT; pass --bucket or set PLASMA_${ENVIRONMENT^^}_BACKUPS_BUCKET"
-[[ -n "$DESTDIR" ]] || DESTDIR="./backups/$ENVIRONMENT"
-(( CHUNK_SIZE > 0 )) || die "--chunk-size must be greater than zero"
+[[ -n "$DESTDIR" ]] || DESTDIR="./config/$ENVIRONMENT/snapshots"
+((CHUNK_SIZE > 0)) || die "--chunk-size must be greater than zero"
 
 AWS_GLOBAL_ARGS=()
 if [[ -n "$PROFILE" ]]; then
@@ -258,7 +265,7 @@ discover_snapshot_prefixes() {
 
   while IFS= read -r key; do
     [[ -n "$key" ]] || continue
-    IFS='/' read -r -a segments <<< "$key"
+    IFS='/' read -r -a segments <<<"$key"
     current=""
     for segment in "${segments[@]}"; do
       [[ -n "$segment" ]] || continue
@@ -286,7 +293,7 @@ select_snapshot_prefix() {
     return 0
   fi
 
-  if (( LATEST )); then
+  if ((LATEST)); then
     printf '%s\n' "${prefixes[$((${#prefixes[@]} - 1))]}"
     return 0
   fi
@@ -305,7 +312,7 @@ select_snapshot_prefix() {
 
   while true; do
     read -r -p "Select snapshot [1-${#prefixes[@]}]: " choice
-    if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#prefixes[@]} )); then
+    if [[ "$choice" =~ ^[0-9]+$ ]] && ((choice >= 1 && choice <= ${#prefixes[@]})); then
       printf '%s\n' "${prefixes[$((choice - 1))]}"
       return 0
     fi
@@ -402,10 +409,10 @@ download_object() {
     die "$dest already exists but is $actual_size bytes; expected $size. Move it aside before retrying."
   fi
 
-  parts=$(( (size + CHUNK_SIZE - 1) / CHUNK_SIZE ))
+  parts=$(((size + CHUNK_SIZE - 1) / CHUNK_SIZE))
   info "download: s3://$BUCKET/$key -> $dest ($(human_bytes "$size"), $parts parts)"
 
-  if (( DRY_RUN )); then
+  if ((DRY_RUN)); then
     return 0
   fi
 
@@ -414,7 +421,7 @@ download_object() {
   for ((i = 0; i < parts; i++)); do
     start=$((i * CHUNK_SIZE))
     end=$((start + CHUNK_SIZE - 1))
-    if (( end >= size )); then
+    if ((end >= size)); then
       end=$((size - 1))
     fi
     expected=$((end - start + 1))
@@ -452,8 +459,8 @@ download_object() {
   for ((i = 0; i < parts; i++)); do
     part="$(printf '%s/part-%05d' "$parts_dir" "$i")"
     [[ -f "$part" ]] || die "missing part while assembling: $part"
-    cat "$part" >> "$assembling"
-    if (( ! KEEP_PARTS )); then
+    cat "$part" >>"$assembling"
+    if ((!KEEP_PARTS)); then
       rm -f "$part"
     fi
   done
@@ -463,22 +470,72 @@ download_object() {
 
   mv "$assembling" "$dest"
 
-  if (( GZIP_TEST )) && [[ "$dest" == *.gz ]]; then
+  if ((GZIP_TEST)) && [[ "$dest" == *.gz ]]; then
     info "gzip test: $dest"
     gzip -t "$dest"
   fi
 
-  if (( ! KEEP_PARTS )); then
+  if ((!KEEP_PARTS)); then
     rmdir "$parts_dir" 2>/dev/null || true
   fi
 
   info "done: $dest"
 }
 
+download_with_s5cmd() {
+  local snapshot_prefix="$1"
+  local src="s3://$BUCKET/${snapshot_prefix}*.tar.gz"
+
+  ensure_login
+  mkdir -p "$DESTDIR"
+
+  info "Downloading with s5cmd: $src -> $DESTDIR/"
+  if ((DRY_RUN)); then
+    info "[dry-run] s5cmd --request-payer requester cp --concurrency 250 '$src' '$DESTDIR/'"
+    return 0
+  fi
+
+  # s5cmd has its own AWS credential resolution and may not understand SSO profiles. Bridge by
+  # exporting the AWS CLI's already-resolved temporary credentials into the environment. Fall back
+  # to s5cmd's own resolution (with --profile) if export fails.
+  local cred_env=""
+  local -a s5_global=(--request-payer requester)
+  if cred_env="$(aws "${AWS_GLOBAL_ARGS[@]}" configure export-credentials --format env 2>/dev/null)" && [[ -n "$cred_env" ]]; then
+    :
+  else
+    cred_env=""
+    [[ -n "$PROFILE" ]] && s5_global+=(--profile "$PROFILE")
+  fi
+
+  (
+    if [[ -n "$cred_env" ]]; then
+      unset AWS_PROFILE AWS_DEFAULT_PROFILE
+      eval "$cred_env"
+    fi
+    export AWS_REGION="$REGION"
+    s5cmd "${s5_global[@]}" cp --concurrency 250 "$src" "$DESTDIR/"
+  )
+
+  if ((GZIP_TEST)); then
+    local f
+    for f in "$DESTDIR"/*.tar.gz; do
+      [[ -e "$f" ]] || continue
+      info "gzip test: $f"
+      gzip -t "$f"
+    done
+  fi
+
+  info "done: $DESTDIR"
+}
+
 command -v aws >/dev/null 2>&1 || die "aws CLI is required"
 command -v gzip >/dev/null 2>&1 || die "gzip is required"
+if ((USE_S5CMD)); then
+  command -v s5cmd >/dev/null 2>&1 ||
+    die "s5cmd not found on PATH. Install it: https://github.com/peak/s5cmd#installation"
+fi
 
-if (( LIST_ONLY )); then
+if ((LIST_ONLY)); then
   discover_snapshot_prefixes "$PREFIX"
   exit 0
 fi
@@ -486,6 +543,12 @@ fi
 SNAPSHOT_PREFIX="$(resolve_snapshot_prefix)"
 info "Using snapshot prefix: s3://$BUCKET/$SNAPSHOT_PREFIX"
 info "Destination: $DESTDIR"
+
+if ((USE_S5CMD)); then
+  download_with_s5cmd "$SNAPSHOT_PREFIX"
+  exit 0
+fi
+
 info "Chunk size: $(human_bytes "$CHUNK_SIZE")"
 
 mapfile -t OBJECTS < <(list_objects_for_prefix "$SNAPSHOT_PREFIX")

@@ -1,0 +1,4 @@
+# Downloaded database snapshots (multi-GB; produced by scripts/download-snapshot.sh).
+# Tarballs live under config/<network>/snapshots/; keep only the README placeholder.
+config/*/snapshots/*
+!config/*/snapshots/README.md
