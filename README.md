@@ -60,11 +60,9 @@ cd non-validator-templates
 # Start a node, defaults to mainnet (the root .env symlinks to config/mainnet/.env)
 docker compose up -d
 
-# For testnet or devnet, override the network with --env-file
-docker compose --env-file config/testnet/.env up -d
-# Alternatively, change the default network with
+# For testnet or devnet
 scripts/use.sh testnet
-# Which essentially updates the .env symlink:
+# Which essentially updates the .env symlink
 ln -sf config/testnet/.env .env
 
 # Optional: start the node together with monitoring (Prometheus + Grafana).
@@ -77,17 +75,11 @@ docker compose ps
 docker compose logs -f plasma-consensus
 ```
 
-> Run all commands from the repository root. The root `.env` is a symlink to
-> `config/mainnet/.env`, so commands default to **mainnet**. Select another network by
-> adding `--env-file config/{network}/.env` (it sets the Compose project `name` and
-> supplies that network's configuration), e.g. `--env-file config/testnet/.env`, or
-> change the default with `scripts/use.sh testnet`.
-
 ## Directory Structure
 
 ```
 compose.yml                 # Network-agnostic service definitions
-.env -> config/mainnet/.env # Symlink, change with scripts/use.sh, or override with --env-file
+.env -> config/mainnet/.env # Symlink, change with scripts/use.sh
 monitoring/                 # Monitoring stack (separate compose.yml + Prometheus & Grafana configs)
 scripts/                    # Scripts such as use.sh and download-snapshot.sh
 config/                     # Per-network configuration and data
@@ -162,22 +154,13 @@ The port defaults to `p2p_port` if not provided.
 Run from the repository root.
 
 ```bash
-# Run a node on the default network and follow logs
-docker compose up
-# Run a node on the testnet network in the background
-docker compose --env-file config/testnet/.env up -d
-# Change the default network to testnet, persists on disk
-scripts/use.sh testnet
-# Run the monitoring stack
-docker compose -f monitoring/compose.yml up -d
-# Run a node on the default network with monitoring
-docker compose -f compose.yml -f monitoring/compose.yml up -d
-# Display the 1000 most recent log entries and follow logs
-docker compose logs -n 1000 -f
-# Stop the node on the default network
-docker compose down
-# Stop node, delete all data volumes and restart clean
-docker compose down -v && docker compose up -d
+scripts/use.sh testnet # Select the network configuration
+docker compose up # Run a node and follow logs
+docker compose -f monitoring/compose.yml up -d # Run the monitoring stack detached
+docker compose -f compose.yml -f monitoring/compose.yml up -d # Run a node + monitoring detached
+docker compose logs -n 1000 -f # Display the 1000 most recent log entries and follow logs
+docker compose down # Stop the node
+docker compose down -v # Stop node and delete all data volumes
 ```
 
 ### Node troubleshooting
@@ -347,8 +330,8 @@ tar -xzf /backups/execution-backup-*.tar.gz -C /execution \
 Restart and check status:
 
 ```bash
-docker compose --env-file "config/$NETWORK/.env" up -d
-docker compose --env-file "config/$NETWORK/.env" ps
+docker compose up -d
+docker compose ps
 ```
 
 ### Snapshot troubleshooting
