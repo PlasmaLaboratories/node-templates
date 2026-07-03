@@ -141,6 +141,7 @@ services:
 
   execution:
     image: ${EXECUTION_IMAGE}:${EXECUTION_TAG}
+    restart: unless-stopped
     user: "0:0"
     entrypoint: ["/bin/bash", "-c"]
     command:
@@ -196,6 +197,7 @@ services:
 
   consensus:
     image: ${CONSENSUS_IMAGE}:${CONSENSUS_TAG}
+    restart: unless-stopped
     user: "0:0"
     entrypoint: ["/bin/bash", "-c"]
     command:

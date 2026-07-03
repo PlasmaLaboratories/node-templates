@@ -2,8 +2,8 @@ services:
   # Host metrics
   node-exporter:
     image: prom/node-exporter:latest
-    container_name: node-exporter
     restart: unless-stopped
+    container_name: node-exporter
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -21,6 +21,7 @@ services:
   # Container metrics
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
+    restart: unless-stopped
     container_name: cadvisor
     ports:
       - "8080:8080"
@@ -40,6 +41,7 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
+    restart: unless-stopped
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -51,6 +53,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
+    restart: unless-stopped
     container_name: grafana
     ports:
       - "3000:3000"
