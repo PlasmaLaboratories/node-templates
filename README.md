@@ -57,38 +57,36 @@ cd non-validator-templates
 
 # One-time: create the shared bridge network used by the nodes and monitoring
 docker network create plasma
-
-# Defaults to mainnet; for testnet or devnet
-scripts/use.sh testnet
+# One-time: select your network, creates a symlink .env -> config/<network>/.env
+scripts/use.sh mainnet
 
 # Start the node
 docker compose up -d
 
-# Optional
-# - Verify
+# Optional: Verify
 docker compose ps
 docker compose logs -f consensus
-# - Monitoring; Grafana available at http://localhost:3000
+# Optional: Start monitoring, Grafana available at http://localhost:3000
 docker compose -f monitoring/compose.yml -d
-# - Start more nodes; devnet, testnet and mainnet nodes can run side by side on the same host
-scripts/use.sh devnet
+# Optional: Start more nodes, devnet, testnet and mainnet nodes can coexist on the same host
+scripts/use.sh testnet
 docker compose up -d
 ```
 
 ## Directory Structure
 
 ```
-compose.yml                 # Network-agnostic service definitions
-.env -> config/mainnet/.env # Symlink, change with scripts/use.sh
-monitoring/                 # Monitoring stack (separate compose.yml + Prometheus & Grafana configs)
-scripts/                    # Scripts such as use.sh and download-snapshot.sh
-config/                     # Per-network configuration and data
-├── {network}/              # Networks: devnet, testnet, mainnet
-│   ├── .env                # Configure network, images, tags, snapshots, trusted peers
-│   ├── non-validator.toml  # Consensus config, including this network's bootstrap nodes
-│   ├── genesis.json        # Chain genesis
-│   ├── keys/               # BLS12-381 validator public keys
-│   └── identities/         # Validator identity files
+compose.yml                   # Network-agnostic service definitions
+.env -> config/{network}/.env # Symlink created by scripts/use.sh, git ignored to survive git pulls
+monitoring/                   # Monitoring stack, compose.yml, Prometheus and Grafana resources
+scripts/                      # Scripts such as use.sh and download-snapshot.sh
+config/                       # Per-network configuration and data
+├── {network}/                # Networks: devnet, testnet, mainnet
+│   ├── .env                  # Configure network, images, tags, snapshots, trusted peers
+│   ├── non-validator.toml    # Consensus config, including this network's bootstrap nodes
+│   ├── genesis.json          # Chain genesis
+│   ├── keys/                 # BLS12-381 validator public keys
+│   └── identities/           # Validator identity files
 ```
 
 ## Configuration
@@ -158,7 +156,7 @@ Run from the repository root.
 
 ```bash
 docker network create plasma # One-time: create shared docker network for nodes + monitoring
-scripts/use.sh testnet # Select the network configuration, defaults to mainnet
+scripts/use.sh testnet # Select the network configuration (required once per clone)
 docker compose up # Run a node and follow logs
 docker compose -f monitoring/compose.yml up -d # Run the monitoring stack detached
 docker compose logs -n 1000 -f # Display the 1000 most recent log entries and follow logs
