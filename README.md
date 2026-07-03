@@ -81,12 +81,12 @@ compose.yml                   # Network-agnostic service definitions
 monitoring/                   # Monitoring stack, compose.yml, Prometheus and Grafana resources
 scripts/                      # Scripts such as use.sh and download-snapshot.sh
 config/                       # Per-network configuration and data
-├── {network}/                # Networks: devnet, testnet, mainnet
-│   ├── .env                  # Configure network, images, tags, snapshots, trusted peers
-│   ├── non-validator.toml    # Consensus config, including this network's bootstrap nodes
-│   ├── genesis.json          # Chain genesis
-│   ├── keys/                 # BLS12-381 validator public keys
-│   └── identities/           # Validator identity files
+└── {network}/                # Networks: devnet, testnet, mainnet
+    ├── .env                  # Configure network, images, tags, snapshots, trusted peers
+    ├── non-validator.toml    # Consensus config, including this network's bootstrap nodes
+    ├── genesis.json          # Chain genesis
+    ├── keys/                 # BLS12-381 validator public keys
+    └── identities/           # Validator identity files
 ```
 
 ## Configuration
