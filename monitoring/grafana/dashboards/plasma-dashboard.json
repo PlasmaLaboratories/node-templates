@@ -99,7 +99,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "count by(network) (container_last_seen{name=~\".*plasma-(execution|consensus)\",network=~\"$network\"})",
+          "expr": "count by(network) (container_last_seen{name=~\".*(execution|consensus)\",network=~\"$network\"})",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
