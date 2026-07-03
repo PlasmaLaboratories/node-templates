@@ -40,16 +40,16 @@ services:
         if [ -f /consensus/data.mdb ]; then
           echo "INFO Consensus database already exists at /consensus/data.mdb; skipping restore" >&2
         else
-          archive="$$(ls -1 /snapshots/consensus-backup-*.tar.gz 2>/dev/null | sort | tail -n 1 || true)"
+          archive="$$(ls -1 /snapshots/consensus-*.tar.gz 2>/dev/null | sort | tail -n 1 || true)"
           if [ -z "$$archive" ]; then
-            echo "INFO No consensus-backup-*.tar.gz found in /snapshots (SNAPSHOT_DIRECTORY=$$SNAPSHOT_DIRECTORY)" >&2
+            echo "INFO No consensus-*.tar.gz found in /snapshots (SNAPSHOT_DIRECTORY=$$SNAPSHOT_DIRECTORY)" >&2
             echo "INFO Skipping consensus database restore" >&2
           else
             echo "INFO Restoring consensus database from $$(basename "$$archive")"
             rm -f /consensus/data.mdb /consensus/lock.mdb
             tar -xzf "$$archive" -C /consensus \
               --numeric-owner --same-owner --same-permissions \
-              --transform "s,^.*consensus-backup[^/]*$$,data.mdb,"
+              --transform "s,^.*consensus-[^/]*$$,data.mdb,"
             if [ ! -f /consensus/data.mdb ]; then
               echo "ERROR Restore did not produce /consensus/data.mdb" >&2
               exit 1
@@ -63,8 +63,6 @@ services:
           plasma-cli init \
             --chain /node/genesis.json \
             --data-dir /consensus
-        else
-          echo "INFO Consensus database for $$NETWORK network already exists"
         fi
 
         if [ ! -f /config/peer-id.txt ]; then
@@ -101,9 +99,9 @@ services:
         if [ -d /execution/db ]; then
           echo "INFO Execution database already exists at /execution/db; skipping restore" >&2
         else
-          archive="$$(ls -1 /snapshots/execution-backup-*.tar.gz 2>/dev/null | sort | tail -n 1 || true)"
+          archive="$$(ls -1 /snapshots/execution-*.tar.gz 2>/dev/null | sort | tail -n 1 || true)"
           if [ -z "$$archive" ]; then
-            echo "INFO No execution-backup-*.tar.gz found in /snapshots (SNAPSHOT_DIRECTORY=$$SNAPSHOT_DIRECTORY)" >&2
+            echo "INFO No execution-*.tar.gz found in /snapshots (SNAPSHOT_DIRECTORY=$$SNAPSHOT_DIRECTORY)" >&2
             echo "INFO Skipping execution database restore" >&2
           else
             echo "INFO Restoring execution database from $$(basename "$$archive")"
@@ -129,8 +127,6 @@ services:
             --chain /node/genesis.json \
             --datadir /execution \
             --log.file.directory /execution/log
-        else
-          echo "INFO Execution database for $$NETWORK network already exists"
         fi
     env_file: config/${NETWORK}/.env
     container_name: ${NETWORK}-initialize-execution
