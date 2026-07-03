@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Change the default network by re-pointing the root .env symlink to config/<network>/.env.
+# Select a network configuration by re-pointing the root .env symlink to config/<network>/.env.
 # Run from anywhere; paths resolve from the repo root.
 
 usage() {
@@ -21,4 +21,4 @@ target="config/$network/.env"
 }
 
 ln -sf "$target" "$repo_root/.env"
-echo "Default network is now $network (.env -> $target)"
+echo "Selected $network (.env -> $target), docker compose commands will use this configuration"
