@@ -55,24 +55,24 @@
 git clone https://github.com/PlasmaLaboratories/non-validator-templates.git
 cd non-validator-templates
 
-# No GHCR login is required; `plasma-consensus-public` is publicly accessible
+# One-time: create the shared bridge network used by the nodes and monitoring
+docker network create plasma
 
-# Start a node, defaults to mainnet (the root .env symlinks to config/mainnet/.env)
+# Defaults to mainnet; for testnet or devnet
+scripts/use.sh testnet
+
+# Start the node
 docker compose up -d
 
-# For testnet or devnet
-scripts/use.sh testnet
-# Which essentially updates the .env symlink
-ln -sf config/testnet/.env .env
-
-# Optional: start the node together with monitoring (Prometheus + Grafana).
-# Combining both files keeps them in one project/network so Prometheus can
-# scrape the node services by name.
-docker compose -f compose.yml -f monitoring/compose.yml up -d
-
-# Verify
+# Optional
+# - Verify
 docker compose ps
 docker compose logs -f plasma-consensus
+# - Monitoring; Grafana available at http://localhost:3000
+docker compose -f monitoring/compose.yml -d
+# - Start more nodes; devnet, testnet and mainnet nodes can run side by side on the same host
+scripts/use.sh devnet
+docker compose up -d
 ```
 
 ## Directory Structure
@@ -140,24 +140,27 @@ The port defaults to `p2p_port` if not provided.
 
 ### Ports
 
-| Service        | Port  | Protocol | Description                   |
-| -------------- | ----- | -------- | ----------------------------- |
-| Execution RPC  | 8545  | HTTP     | JSON-RPC API endpoint         |
-| Execution Auth | 8551  | HTTP     | Engine API (internal)         |
-| Execution P2P  | 30303 | TCP/UDP  | Peer-to-peer networking       |
-| Consensus API  | 35070 | HTTP     | Consensus Health/API endpoint |
-| Consensus P2P  | 34070 | TCP      | Consensus networking          |
-| Metrics        | 9001  | HTTP     | Prometheus metrics            |
+| Service        | Mainnet | Testnet | Devnet | Protocol | Exposed   | Description                |
+| -------------- | ------- | ------- | ------ | -------- | --------- | -------------------------- |
+| Execution RPC  | 8545    | 8546    | 8547   | HTTP     | Localhost | User-facing JSON-RPC API   |
+| Execution Auth | 8551    | 8551    | 8551   | HTTP     | No        | Engine API (internal only) |
+| Execution P2P  | 30303   | 30304   | 30305  | TCP/UDP  | Yes       | Execution layer peering    |
+| Consensus API  | 35070   | 35070   | 35070  | HTTP     | No        | Consensus health & API     |
+| Consensus P2P  | 34070   | 34071   | 34072  | TCP      | Yes       | Consensus layer peering    |
+| Metrics        | 9001    | 9001    | 9001   | HTTP     | No        | Prometheus scrape target   |
+
+> :warning: Mainnet uses the default ports. In order to avoid collisions when running multiple nodes
+> on the same host, testnet and devnet use different ports.
 
 ## Usage
 
 Run from the repository root.
 
 ```bash
-scripts/use.sh testnet # Select the network configuration
+docker network create plasma # One-time: create shared docker network for nodes + monitoring
+scripts/use.sh testnet # Select the network configuration, defaults to mainnet
 docker compose up # Run a node and follow logs
 docker compose -f monitoring/compose.yml up -d # Run the monitoring stack detached
-docker compose -f compose.yml -f monitoring/compose.yml up -d # Run a node + monitoring detached
 docker compose logs -n 1000 -f # Display the 1000 most recent log entries and follow logs
 docker compose down # Stop the node
 docker compose down -v # Stop node and delete all data volumes

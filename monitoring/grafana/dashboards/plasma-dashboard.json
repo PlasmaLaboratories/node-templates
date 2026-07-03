@@ -37,7 +37,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -84,9 +84,7 @@
         "namePlacement": "top",
         "orientation": "horizontal",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -101,7 +99,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "count by(image) (container_last_seen{name=~\"(plasma-execution|plasma-consensus)\"})",
+          "expr": "count by(network) (container_last_seen{name=~\".*plasma-(execution|consensus)\",network=~\"$network\"})",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -131,7 +129,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -210,11 +208,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (up{instance=\"plasma-consensus:9001\"})",
+          "expr": "max by(instance) (up{service=\"consensus\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{namespace}}",
@@ -229,7 +227,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -308,11 +306,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (up{instance=\"plasma-execution:9001\"})",
+          "expr": "max by(instance) (up{service=\"execution\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{namespace}}",
@@ -340,7 +338,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -432,11 +430,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (reth_blockchain_tree_canonical_chain_height)",
+          "expr": "max by(instance) (reth_blockchain_tree_canonical_chain_height{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{namespace}}",
@@ -451,7 +449,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -502,9 +500,7 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -517,12 +513,12 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "max by(instance) (rate(reth_blockchain_tree_canonical_chain_height[$__rate_interval]))",
+          "expr": "max by(instance) (rate(reth_blockchain_tree_canonical_chain_height{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -539,9 +535,7 @@
           "options": {
             "includeTimeField": false,
             "mode": "reduceFields",
-            "reducers": [
-              "max"
-            ]
+            "reducers": ["max"]
           }
         },
         {
@@ -561,7 +555,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -641,7 +635,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (rate(reth_blockchain_tree_reorgs[$__rate_interval]))",
+          "expr": "max by(instance) (rate(reth_blockchain_tree_reorgs{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -670,7 +664,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -734,7 +728,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance, quantile) (reth_engine_rpc_new_payload_v4{quantile=~\"$quantile\"})",
+          "expr": "max by(instance, quantile) (reth_engine_rpc_new_payload_v4{quantile=~\"$quantile\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -749,7 +743,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -813,7 +807,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance, quantile) (reth_engine_rpc_get_payload_v4{quantile=~\"$quantile\"})",
+          "expr": "max by(instance, quantile) (reth_engine_rpc_get_payload_v4{quantile=~\"$quantile\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -841,7 +835,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -962,11 +956,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (reth_network_connected_peers)",
+          "expr": "max by(instance) (reth_network_connected_peers{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -981,7 +975,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -1068,7 +1062,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (rate(reth_network_pending_session_failures[$__rate_interval]))",
+          "expr": "max by(instance) (rate(reth_network_pending_session_failures{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -1083,7 +1077,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -1167,7 +1161,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (rate(reth_network_closed_sessions[$__rate_interval]))",
+          "expr": "max by(instance) (rate(reth_network_closed_sessions{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -1182,7 +1176,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -1266,7 +1260,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(instance) (rate(reth_network_total_outgoing_peer_messages_dropped[$__rate_interval])) + (sum by(instance) (rate(reth_network_egress_peer_channel_full[$__rate_interval])))",
+          "expr": "sum by(instance) (rate(reth_network_total_outgoing_peer_messages_dropped{network=~\"$network\"}[$__rate_interval])) + (sum by(instance) (rate(reth_network_egress_peer_channel_full{network=~\"$network\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -1281,7 +1275,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -1365,7 +1359,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (rate(reth_network_ping_timeout[$__rate_interval]))",
+          "expr": "max by(instance) (rate(reth_network_ping_timeout{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -1380,7 +1374,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -1464,7 +1458,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(instance) (rate(reth_network_invalid_messages_received[$__rate_interval])) + (sum by(instance) (rate(reth_network_unsolicited_transactions[$__rate_interval])))",
+          "expr": "sum by(instance) (rate(reth_network_invalid_messages_received{network=~\"$network\"}[$__rate_interval])) + (sum by(instance) (rate(reth_network_unsolicited_transactions{network=~\"$network\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -1479,7 +1473,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -1563,11 +1557,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(instance) (rate(reth_network_propagated_transactions[$__rate_interval]))",
+          "expr": "sum by(instance) (rate(reth_network_propagated_transactions{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "{{namespace}}",
@@ -1595,7 +1589,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -1685,11 +1679,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (plasma_networking_connections_active{direction=~\"$direction\"})",
+          "expr": "max by(instance) (plasma_networking_connections_active{direction=~\"$direction\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -1704,7 +1698,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -1794,11 +1788,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (plasma_networking_synchronization_active_streams)",
+          "expr": "max by(instance) (plasma_networking_synchronization_active_streams{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -1813,7 +1807,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -1881,12 +1875,12 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": false,
-          "expr": "max by(instance) (avg_over_time(rate(plasma_networking_synchronization_streams_total[$__rate_interval])[1h:$__rate_interval]))",
+          "expr": "max by(instance) (avg_over_time(rate(plasma_networking_synchronization_streams_total{network=~\"$network\"}[$__rate_interval])[1h:$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -1902,7 +1896,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -2011,11 +2005,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (rate(plasma_networking_connections_attempt_errors_total{direction=~\"$direction\"}[$__rate_interval]))",
+          "expr": "max by(instance) (rate(plasma_networking_connections_attempt_errors_total{direction=~\"$direction\",network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -2030,7 +2024,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -2097,11 +2091,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(plasma_networking_connections_duration_seconds_bucket[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(plasma_networking_connections_duration_seconds_bucket{network=~\"$network\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "{{instance}}",
@@ -2116,7 +2110,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -2225,11 +2219,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (rate(plasma_networking_messages_total{direction=~\"$direction\", kind=~\"$message_kind\"}[$__rate_interval]))",
+          "expr": "max by(instance) (rate(plasma_networking_messages_total{direction=~\"$direction\", kind=~\"$message_kind\",network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -2244,7 +2238,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -2352,11 +2346,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (rate(plasma_networking_synchronization_in_stream_errors_total[$__rate_interval]))",
+          "expr": "max by(instance) (rate(plasma_networking_synchronization_in_stream_errors_total{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -2384,7 +2378,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -2448,7 +2442,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance, quantile) (reth_sync_execution_execution_histogram{quantile=~\"$quantile\"})",
+          "expr": "max by(instance, quantile) (reth_sync_execution_execution_histogram{quantile=~\"$quantile\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -2463,7 +2457,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -2503,9 +2497,7 @@
         "orientation": "auto",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -2519,7 +2511,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "quantile($quantile, max by(instance) (reth_engine_rpc_new_payload_total_gas)) / {\"$block_gas_limit\"}",
+          "expr": "quantile($quantile, max by(instance) (reth_engine_rpc_new_payload_total_gas{network=~\"$network\"})) / {\"$block_gas_limit\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -2548,7 +2540,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -2632,11 +2624,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (reth_transaction_pool_total_transactions)",
+          "expr": "max by(instance) (reth_transaction_pool_total_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "{{instance}}",
@@ -2651,7 +2643,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -2735,11 +2727,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (reth_transaction_pool_pending_pool_size_bytes)",
+          "expr": "max by(instance) (reth_transaction_pool_pending_pool_size_bytes{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "{{namespace}}",
@@ -2754,7 +2746,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -2838,7 +2830,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (reth_transaction_pool_pending_pool_transactions)",
+          "expr": "max by(instance) (reth_transaction_pool_pending_pool_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -2853,7 +2845,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -2937,11 +2929,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(instance) (rate(reth_transaction_pool_invalid_transactions[$__rate_interval]))",
+          "expr": "sum by(instance) (rate(reth_transaction_pool_invalid_transactions{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "{{namespace}}",
@@ -2956,7 +2948,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "description": "Invalid because they've set their base fee too low.",
       "fieldConfig": {
@@ -3040,7 +3032,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (reth_transaction_pool_basefee_pool_transactions)",
+          "expr": "max by(instance) (reth_transaction_pool_basefee_pool_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -3055,7 +3047,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -3139,11 +3131,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(instance) (rate(reth_transaction_pool_removed_transactions[$__rate_interval]))",
+          "expr": "sum by(instance) (rate(reth_transaction_pool_removed_transactions{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "{{namespace}}",
@@ -3158,7 +3150,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -3241,7 +3233,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (reth_transaction_pool_queued_pool_transactions)",
+          "expr": "max by(instance) (reth_transaction_pool_queued_pool_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -3256,7 +3248,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -3339,11 +3331,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (reth_transaction_pool_total_legacy_transactions)",
+          "expr": "max by(instance) (reth_transaction_pool_total_legacy_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "{{namespace}}",
@@ -3358,7 +3350,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -3441,11 +3433,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (reth_transaction_pool_total_eip1559_transactions)",
+          "expr": "max by(instance) (reth_transaction_pool_total_eip1559_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "{{namespace}}",
@@ -3460,7 +3452,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -3543,11 +3535,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (reth_transaction_pool_total_eip2930_transactions)",
+          "expr": "max by(instance) (reth_transaction_pool_total_eip2930_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "{{namespace}}",
@@ -3562,7 +3554,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -3645,11 +3637,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (reth_transaction_pool_total_eip4844_transactions)",
+          "expr": "max by(instance) (reth_transaction_pool_total_eip4844_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "{{instance}}",
@@ -3664,7 +3656,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -3747,11 +3739,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(instance) (reth_transaction_pool_total_eip7702_transactions)",
+          "expr": "max by(instance) (reth_transaction_pool_total_eip7702_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "{{namespace}}",
@@ -3779,7 +3771,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -3829,9 +3821,7 @@
         "minVizWidth": 75,
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -3845,11 +3835,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "(container_fs_usage_bytes{name=\"plasma-consensus\"} * 100) / container_fs_limit_bytes{name=\"plasma-consensus\"}",
+          "expr": "(container_fs_usage_bytes{name=~\".*plasma-consensus\",network=~\"$network\"} * 100) / container_fs_limit_bytes{name=~\".*plasma-consensus\",network=~\"$network\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -3864,7 +3854,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -3961,11 +3951,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(name) (increase(container_fs_usage_bytes{name=\"plasma-consensus\"}[1h]))",
+          "expr": "max by(name) (increase(container_fs_usage_bytes{name=~\".*plasma-consensus\",network=~\"$network\"}[1h]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{namespace}}",
@@ -3980,7 +3970,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "description": "Just memory usage",
       "fieldConfig": {
@@ -4065,11 +4055,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(name) (label_replace(container_memory_working_set_bytes{name=\"plasma-consensus\"}, \"instance\", \"$1\", \"namespace\", \"$extract_short_name\"))",
+          "expr": "max by(name) (label_replace(container_memory_working_set_bytes{name=~\".*plasma-consensus\",network=~\"$network\"}, \"instance\", \"$1\", \"namespace\", \"$extract_short_name\"))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{namespace}}",
@@ -4084,7 +4074,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "description": "Includes file caching",
       "fieldConfig": {
@@ -4169,11 +4159,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(name) (container_memory_usage_bytes{name=\"plasma-consensus\"})",
+          "expr": "max by(name) (container_memory_usage_bytes{name=~\".*plasma-consensus\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{namespace}}",
@@ -4188,7 +4178,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -4271,11 +4261,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(name) (irate(container_cpu_usage_seconds_total{name=\"plasma-consensus\"}[5m]))",
+          "expr": "sum by(name) (irate(container_cpu_usage_seconds_total{name=~\".*plasma-consensus\",network=~\"$network\"}[5m]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -4291,7 +4281,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -4354,9 +4344,7 @@
               "id": "byNames",
               "options": {
                 "mode": "exclude",
-                "names": [
-                  "ghcr.io/plasmalaboratories/plasma-consensus:0.12.4"
-                ],
+                "names": ["ghcr.io/plasmalaboratories/plasma-consensus:0.12.4"],
                 "prefix": "All except:",
                 "readOnly": true
               }
@@ -4386,9 +4374,7 @@
       "options": {
         "legend": {
           "asTable": true,
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -4404,11 +4390,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_receive_bytes_total{image=~\".*plasma-consensus.*\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_receive_bytes_total{image=~\".*plasma-consensus.*\",network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -4424,7 +4410,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -4494,9 +4480,7 @@
       "options": {
         "legend": {
           "asTable": true,
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -4512,11 +4496,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_transmit_bytes_total{image=~\".*plasma-consensus.*\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_transmit_bytes_total{image=~\".*plasma-consensus.*\",network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -4532,7 +4516,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -4602,9 +4586,7 @@
       "options": {
         "legend": {
           "asTable": true,
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -4620,11 +4602,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_receive_packets_total{image=~\".*plasma-consensus.*\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_receive_packets_total{image=~\".*plasma-consensus.*\",network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "__auto",
@@ -4639,7 +4621,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -4709,9 +4691,7 @@
       "options": {
         "legend": {
           "asTable": true,
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -4727,11 +4707,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_transmit_packets_total{image=~\".*plasma-consensus.*\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_transmit_packets_total{image=~\".*plasma-consensus.*\",network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "__auto",
@@ -4759,7 +4739,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -4809,9 +4789,7 @@
         "minVizWidth": 75,
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -4825,11 +4803,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "(container_fs_usage_bytes{name=\"plasma-execution\"} * 100) / container_fs_limit_bytes{name=\"plasma-execution\"}",
+          "expr": "(container_fs_usage_bytes{name=~\".*plasma-execution\",network=~\"$network\"} * 100) / container_fs_limit_bytes{name=~\".*plasma-execution\",network=~\"$network\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -4844,7 +4822,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -4941,11 +4919,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(name) (increase(container_fs_usage_bytes{name=\"plasma-execution\"}[1h]))",
+          "expr": "max by(name) (increase(container_fs_usage_bytes{name=~\".*plasma-execution\",network=~\"$network\"}[1h]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{namespace}}",
@@ -4960,7 +4938,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "description": "Just memory usage",
       "fieldConfig": {
@@ -5045,11 +5023,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(name) (label_replace(container_memory_working_set_bytes{name=\"plasma-execution\"}, \"instance\", \"$1\", \"namespace\", \"$extract_short_name\"))",
+          "expr": "max by(name) (label_replace(container_memory_working_set_bytes{name=~\".*plasma-execution\",network=~\"$network\"}, \"instance\", \"$1\", \"namespace\", \"$extract_short_name\"))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{namespace}}",
@@ -5064,7 +5042,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "description": "Includes file caching",
       "fieldConfig": {
@@ -5149,11 +5127,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(name) (container_memory_usage_bytes{name=\"plasma-execution\"})",
+          "expr": "max by(name) (container_memory_usage_bytes{name=~\".*plasma-execution\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{namespace}}",
@@ -5168,7 +5146,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -5251,11 +5229,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(name) (irate(container_cpu_usage_seconds_total{name=\"plasma-execution\"}[5m]))",
+          "expr": "sum by(name) (irate(container_cpu_usage_seconds_total{name=~\".*plasma-execution\",network=~\"$network\"}[5m]))",
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
@@ -5271,7 +5249,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -5334,9 +5312,7 @@
               "id": "byNames",
               "options": {
                 "mode": "exclude",
-                "names": [
-                  "ghcr.io/paradigmxyz/reth:v1.7.0"
-                ],
+                "names": ["ghcr.io/paradigmxyz/reth:v1.7.0"],
                 "prefix": "All except:",
                 "readOnly": true
               }
@@ -5366,9 +5342,7 @@
       "options": {
         "legend": {
           "asTable": true,
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -5384,11 +5358,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_receive_bytes_total{image=~\".*reth.*\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_receive_bytes_total{image=~\".*reth.*\",network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -5404,7 +5378,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -5474,9 +5448,7 @@
       "options": {
         "legend": {
           "asTable": true,
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -5492,11 +5464,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_transmit_bytes_total{image=~\".*reth.*\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_transmit_bytes_total{image=~\".*reth.*\",network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -5512,7 +5484,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -5582,9 +5554,7 @@
       "options": {
         "legend": {
           "asTable": true,
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -5600,11 +5570,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_receive_packets_total{image=~\".*reth.*\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_receive_packets_total{image=~\".*reth.*\",network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "__auto",
@@ -5619,7 +5589,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -5689,9 +5659,7 @@
       "options": {
         "legend": {
           "asTable": true,
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -5707,11 +5675,11 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "PAE45454D0EDB9216"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_transmit_packets_total{image=~\".*reth.*\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_transmit_packets_total{image=~\".*reth.*\",network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "__auto",
@@ -5730,6 +5698,32 @@
   "tags": [],
   "templating": {
     "list": [
+      {
+        "allValue": ".*",
+        "allowCustomValue": false,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(up{service=~\"execution|consensus\"}, network)",
+        "description": "Plasma network (compose project) to filter on.",
+        "includeAll": true,
+        "multi": true,
+        "name": "network",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(up{service=~\"execution|consensus\"}, network)"
+        },
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      },
       {
         "allValue": "0.99 0.9 0.5",
         "allowCustomValue": false,

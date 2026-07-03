@@ -33,7 +33,7 @@ services:
         fi
         echo "INFO Consensus database restored to /consensus/data.mdb"
     env_file: config/${NETWORK}/.env
-    container_name: import-consensus-snapshot
+    container_name: ${NETWORK}-import-consensus-snapshot
     volumes:
       - consensus-data:/consensus:rw
       - ${SNAPSHOT_DIRECTORY}:/snapshots:ro
@@ -75,7 +75,7 @@ services:
         fi
         echo "INFO Execution database restored to /execution"
     env_file: config/${NETWORK}/.env
-    container_name: import-execution-snapshot
+    container_name: ${NETWORK}-import-execution-snapshot
     volumes:
       - execution-data:/execution:rw
       - ${SNAPSHOT_DIRECTORY}:/snapshots:ro
@@ -100,7 +100,7 @@ services:
         fi
         echo 'INFO OpenSSL initialization completed'
     env_file: config/${NETWORK}/.env
-    container_name: openssl-init
+    container_name: ${NETWORK}-openssl-init
     volumes:
       - consensus-data:/consensus:rw
       - jwt-secret:/jwt:rw
@@ -133,6 +133,7 @@ services:
           echo "INFO Peer ID for non-validator already exists"
         fi
     env_file: config/${NETWORK}/.env
+    container_name: ${NETWORK}-init-consensus
     volumes:
       - consensus-data:/consensus:rw
       - genesis:/config:rw
@@ -156,8 +157,8 @@ services:
         else
           echo "INFO Execution database for $$NETWORK network already exists"
         fi
-    container_name: init-execution
     env_file: config/${NETWORK}/.env
+    container_name: ${NETWORK}-init-execution
     volumes:
       - execution-data:/execution:rw
       - jwt-secret:/jwt:ro
@@ -192,12 +193,12 @@ services:
           --txpool.blobpool-max-size "0" \
           --txpool.blob-cache-size "0" \
           --log.file.directory /execution/log
-    container_name: plasma-execution
     env_file: config/${NETWORK}/.env
+    container_name: ${NETWORK}-plasma-execution
     ports:
-      - "30303:30303" # p2p
-      - "30303:30303/udp" # p2p-udp
-      - "127.0.0.1:8545:8545" # RPC only localhost (remove 127.0.0.1 to expose)
+      - "${EXECUTION_P2P_PORT}:30303"
+      - "${EXECUTION_P2P_PORT}:30303/udp"
+      - "${EXECUTION_RPC_PORT}:8545"
     expose:
       - "9001" # metrics
     healthcheck:
@@ -237,11 +238,11 @@ services:
           --telemetry.port 9001 \
           -vvv
     ports:
-      - "34070:34070" # p2p
+      - "${CONSENSUS_P2P_PORT}:34070"
     expose:
       - "9001" # metrics
-    container_name: plasma-consensus
     env_file: config/${NETWORK}/.env
+    container_name: ${NETWORK}-plasma-consensus
     volumes:
       - consensus-data:/consensus:rw
       - ./config/${NETWORK}/non-validator.toml:/tmp/non-validator.toml:ro
@@ -265,4 +266,7 @@ volumes:
 
 networks:
   plasma:
-    driver: bridge
+    # Shared docker bridge network, used by all nodes and the monitoring stack.
+    # Created externally once with `docker network create plasma`, then reused.
+    external: true
+    name: plasma

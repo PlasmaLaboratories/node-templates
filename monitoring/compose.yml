@@ -43,7 +43,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus:/etc/prometheus
+      - ./prometheus:/etc/prometheus
       - prometheus-data:/prometheus
     networks:
       - plasma
@@ -57,8 +57,8 @@ services:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
     networks:
       - plasma
 
@@ -68,4 +68,7 @@ volumes:
 
 networks:
   plasma:
-    driver: bridge
+    # Shared docker bridge network, used by all nodes and the monitoring stack.
+    # Created externally once with `docker network create plasma`, then reused.
+    external: true
+    name: plasma
