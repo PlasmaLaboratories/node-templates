@@ -2,8 +2,6 @@ apiVersion: 1
 
 datasources:
   - name: Prometheus
-    # Fixed uid referenced by the provisioned dashboard; without it Grafana
-    # generates a random uid per install and the dashboard can't find it.
     uid: prometheus
     type: prometheus
     access: proxy
