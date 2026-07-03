@@ -1,4 +1,4 @@
-engine_api_url = "http://devnet-plasma-execution:8551"
+engine_api_url = "http://devnet-execution:8551"
 consensus_api_host = "0.0.0.0"
 authrpc_jwtsecret = "/jwt/jwt.hex"
 

@@ -67,7 +67,7 @@ docker compose up -d
 # Optional
 # - Verify
 docker compose ps
-docker compose logs -f plasma-consensus
+docker compose logs -f consensus
 # - Monitoring; Grafana available at http://localhost:3000
 docker compose -f monitoring/compose.yml -d
 # - Start more nodes; devnet, testnet and mainnet nodes can run side by side on the same host
@@ -282,11 +282,11 @@ aws s3 cp \
 
 ### Step 2: Import snapshots
 
-If a snapshot exists, the compose stack imports it **automatically**. Two one-shot services
-`import-consensus-snapshot` and `import-execution-snapshot` run before the node on every
-`docker compose up` and import the newest `*-backup-*.tar.gz` they find in `SNAPSHOT_DIRECTORY`.
-When a node database already exists (e.g. restarting an existing node), or when no snapshot is
-present in the `SNAPSHOT_DIRECTORY`, these services exit and the node starts normally.
+If a snapshot exists, the compose stack imports it **automatically**. The `initialize-consensus`
+and `initialize-execution` services import the newest `*-backup-*.tar.gz` they find in
+`SNAPSHOT_DIRECTORY` before initializing the databases, on every `docker compose up`. When a node
+database already exists (e.g. restarting an existing node), or when no snapshot is present in the
+`SNAPSHOT_DIRECTORY`, the import step is skipped and the node starts normally.
 
 > :information_source: Note:
 >

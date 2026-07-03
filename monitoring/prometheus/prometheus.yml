@@ -30,33 +30,33 @@ scrape_configs:
   # Targets for networks that aren't currently running simply show as down (up=0).
   - job_name: 'plasma'
     static_configs:
-      - targets: ['mainnet-plasma-execution:9001']
+      - targets: ['mainnet-execution:9001']
         labels:
           network: mainnet
           service: execution
-          instance: mainnet-plasma-execution
-      - targets: ['mainnet-plasma-consensus:9001']
+          instance: mainnet-execution
+      - targets: ['mainnet-consensus:9001']
         labels:
           network: mainnet
           service: consensus
-          instance: mainnet-plasma-consensus
-      - targets: ['testnet-plasma-execution:9001']
+          instance: mainnet-consensus
+      - targets: ['testnet-execution:9001']
         labels:
           network: testnet
           service: execution
-          instance: testnet-plasma-execution
-      - targets: ['testnet-plasma-consensus:9001']
+          instance: testnet-execution
+      - targets: ['testnet-consensus:9001']
         labels:
           network: testnet
           service: consensus
-          instance: testnet-plasma-consensus
-      - targets: ['devnet-plasma-execution:9001']
+          instance: testnet-consensus
+      - targets: ['devnet-execution:9001']
         labels:
           network: devnet
           service: execution
-          instance: devnet-plasma-execution
-      - targets: ['devnet-plasma-consensus:9001']
+          instance: devnet-execution
+      - targets: ['devnet-consensus:9001']
         labels:
           network: devnet
           service: consensus
-          instance: devnet-plasma-consensus
+          instance: devnet-consensus
