@@ -97,15 +97,14 @@ list (`EXECUTION_TRUSTED_PEERS`); `non-validator.toml` holds the consensus confi
 that network's bootstrap nodes. One shared `compose.yml` serves all networks. The validator keys,
 identities, and genesis stay as files because the consensus client (0.15.0) reads them from disk.
 
-> Execution peers are passed to reth on the command line via
-> `EXECUTION_TRUSTED_PEERS`, but consensus bootstrap nodes live in
-> `non-validator.toml`: consensus 0.15.0 has no CLI/env option for them, so they
-> must be in the config file the observer reads.
+> Execution peers are passed to reth on the command line via `EXECUTION_TRUSTED_PEERS`, but
+> consensus bootstrap nodes live in `non-validator.toml`: consensus 0.15.0 has no CLI/env option for
+> them, so they must be in the config file the observer reads.
 
 ### Consensus Configuration
 
-Each network has its own `config/{network}/non-validator.toml`. The files are
-identical apart from the per-network `[network.bootstrap_nodes.*]` entries.
+Each network has its own `config/{network}/non-validator.toml`. The files are identical apart from
+the per-network `[network.bootstrap_nodes.*]` entries.
 
 Key sections:
 
@@ -229,8 +228,8 @@ s3://plasma-mainnet-db-backups/mainnet/observer-0/06-22-26/execution-backup-2026
 |             | **Devnet:** ~100 GB free                                            |
 
 > **Cost note:** Data transfer out from `us-east-2` is ~$0.09/GB for the first 10 TB/month.
-> Transferring from an EC2 instance **in the same region** is free. Running your node in
-> `us-east-2` is the most cost-effective option.
+> Transferring from an EC2 instance **in the same region** is free. Running your node in `us-east-2`
+> is the most cost-effective option.
 
 ### Step 1: Download
 
@@ -280,8 +279,8 @@ aws s3 cp \
 
 ### Step 2: Import snapshots
 
-If a snapshot exists, the compose stack imports it **automatically**. The `initialize-consensus`
-and `initialize-execution` services import the newest `*-backup-*.tar.gz` they find in
+If a snapshot exists, the compose stack imports it **automatically**. The `initialize-consensus` and
+`initialize-execution` services import the newest `*-backup-*.tar.gz` they find in
 `SNAPSHOT_DIRECTORY` before initializing the databases, on every `docker compose up`. When a node
 database already exists (e.g. restarting an existing node), or when no snapshot is present in the
 `SNAPSHOT_DIRECTORY`, the import step is skipped and the node starts normally.
