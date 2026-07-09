@@ -17,11 +17,46 @@ scrape_configs:
     scrape_timeout: 25s
     static_configs:
       - targets: ['cadvisor:8080']
+    # Promote the compose project (= ${NETWORK}) to a top-level `network` label so
+    # dashboard panels can filter all container metrics by network.
+    metric_relabel_configs:
+      - source_labels: [container_label_com_docker_compose_project]
+        target_label: network
 
-  - job_name: 'plasma-execution'
+  # Plasma execution + consensus nodes, scraped by container name on the shared
+  # `plasma` bridge network (created once with `docker network create plasma` and
+  # referenced as external by both compose.yml and monitoring/compose.yml). Targets
+  # are static per network; the `network` label drives the Grafana network dropdown.
+  # Targets for networks that aren't currently running simply show as down (up=0).
+  - job_name: 'plasma'
     static_configs:
-      - targets: ['plasma-execution:9001']
-
-  - job_name: 'plasma-consensus'
-    static_configs:
-      - targets: ['plasma-consensus:9001']
+      - targets: ['mainnet-execution:9001']
+        labels:
+          network: mainnet
+          service: execution
+          instance: mainnet-execution
+      - targets: ['mainnet-consensus:9001']
+        labels:
+          network: mainnet
+          service: consensus
+          instance: mainnet-consensus
+      - targets: ['testnet-execution:9001']
+        labels:
+          network: testnet
+          service: execution
+          instance: testnet-execution
+      - targets: ['testnet-consensus:9001']
+        labels:
+          network: testnet
+          service: consensus
+          instance: testnet-consensus
+      - targets: ['devnet-execution:9001']
+        labels:
+          network: devnet
+          service: execution
+          instance: devnet-execution
+      - targets: ['devnet-consensus:9001']
+        labels:
+          network: devnet
+          service: consensus
+          instance: devnet-consensus

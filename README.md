@@ -9,7 +9,7 @@
 [![Website](https://img.shields.io/badge/website-plasma.org-14342B)](https://www.plasma.org)
 ![Networks](https://img.shields.io/badge/networks-mainnet%20%C2%B7%20testnet%20%C2%B7%20devnet-14342B)
 ![Consensus](https://img.shields.io/badge/consensus-0.15.0-14342B)
-![Execution](https://img.shields.io/badge/execution-Reth%20v1.8.3-14342B)
+![Execution](https://img.shields.io/badge/execution-Reth%20v1.11.3-14342B)
 
 </div>
 
@@ -42,11 +42,11 @@
 
 ## Networks
 
-| Network | Chain ID | Consensus | Execution   | GHCR Auth Required |
-| ------- | -------- | --------- | ----------- | ------------------ |
-| mainnet | 9745     | 0.15.0    | Reth v1.8.3 | No                 |
-| testnet | 9746     | 0.15.0    | Reth v1.8.3 | No                 |
-| devnet  | 9747     | 0.15.0    | Reth v1.8.3 | No                 |
+| Network | Chain ID | Consensus | Execution    | GHCR Auth Required |
+| ------- | -------- | --------- | ------------ | ------------------ |
+| mainnet | 9745     | 0.15.0    | Reth v1.11.3 | No                 |
+| testnet | 9746     | 0.15.0    | Reth v1.11.3 | No                 |
+| devnet  | 9747     | 0.15.0    | Reth v1.11.3 | No                 |
 
 ## Quick Start
 
@@ -55,40 +55,43 @@
 git clone https://github.com/PlasmaLaboratories/non-validator-templates.git
 cd non-validator-templates
 
-# No GHCR login is required; `plasma-consensus-public` is publicly accessible
+# One-time: create the shared bridge network used by the nodes and monitoring
+docker network create plasma
+# One-time: select your network, creates a symlink .env -> config/<network>/.env
+scripts/use.sh mainnet
 
-# Start a node, defaults to mainnet (the root .env symlinks to config/mainnet/.env)
+# Start the node
 docker compose up -d
 
-# For testnet or devnet
-scripts/use.sh testnet
-# Which essentially updates the .env symlink
-ln -sf config/testnet/.env .env
-
-# Optional: start the node together with monitoring (Prometheus + Grafana).
-# Combining both files keeps them in one project/network so Prometheus can
-# scrape the node services by name.
-docker compose -f compose.yml -f monitoring/compose.yml up -d
-
-# Verify
+# Optional: Verify via docker compose (currently used network via scripts/use.sh)
 docker compose ps
-docker compose logs -f plasma-consensus
+docker compose logs -f consensus
+docker compose logs -f execution
+# Optional: Verify via docker
+docker ps
+docker logs -f mainnet-consensus
+docker logs -f mainnet-execution
+# Optional: Start monitoring, Grafana available at http://localhost:3000
+docker compose -f monitoring/compose.yml up -d
+# Optional: Start more nodes, devnet, testnet and mainnet nodes can coexist on the same host
+scripts/use.sh testnet
+docker compose up -d
 ```
 
 ## Directory Structure
 
 ```
-compose.yml                 # Network-agnostic service definitions
-.env -> config/mainnet/.env # Symlink, change with scripts/use.sh
-monitoring/                 # Monitoring stack (separate compose.yml + Prometheus & Grafana configs)
-scripts/                    # Scripts such as use.sh and download-snapshot.sh
-config/                     # Per-network configuration and data
-├── {network}/              # Networks: devnet, testnet, mainnet
-│   ├── .env                # Configure network, images, tags, snapshots, trusted peers
-│   ├── non-validator.toml  # Consensus config, including this network's bootstrap nodes
-│   ├── genesis.json        # Chain genesis
-│   ├── keys/               # BLS12-381 validator public keys
-│   └── identities/         # Validator identity files
+compose.yml                   # Network-agnostic service definitions
+.env -> config/{network}/.env # Symlink created by scripts/use.sh, git ignored to survive git pulls
+monitoring/                   # Monitoring stack, compose.yml, Prometheus and Grafana resources
+scripts/                      # Scripts such as use.sh and download-snapshot.sh
+config/                       # Per-network configuration and data
+└── {network}/                # Networks: devnet, testnet, mainnet
+    ├── .env                  # Configure network, images, tags, snapshots, trusted peers
+    ├── non-validator.toml    # Consensus config, including this network's bootstrap nodes
+    ├── genesis.json          # Chain genesis
+    ├── keys/                 # BLS12-381 validator public keys
+    └── identities/           # Validator identity files
 ```
 
 ## Configuration
@@ -99,15 +102,14 @@ list (`EXECUTION_TRUSTED_PEERS`); `non-validator.toml` holds the consensus confi
 that network's bootstrap nodes. One shared `compose.yml` serves all networks. The validator keys,
 identities, and genesis stay as files because the consensus client (0.15.0) reads them from disk.
 
-> Execution peers are passed to reth on the command line via
-> `EXECUTION_TRUSTED_PEERS`, but consensus bootstrap nodes live in
-> `non-validator.toml`: consensus 0.15.0 has no CLI/env option for them, so they
-> must be in the config file the observer reads.
+> Execution peers are passed to reth on the command line via `EXECUTION_TRUSTED_PEERS`, but
+> consensus bootstrap nodes live in `non-validator.toml`: consensus 0.15.0 has no CLI/env option for
+> them, so they must be in the config file the observer reads.
 
 ### Consensus Configuration
 
-Each network has its own `config/{network}/non-validator.toml`. The files are
-identical apart from the per-network `[network.bootstrap_nodes.*]` entries.
+Each network has its own `config/{network}/non-validator.toml`. The files are identical apart from
+the per-network `[network.bootstrap_nodes.*]` entries.
 
 Key sections:
 
@@ -140,24 +142,27 @@ The port defaults to `p2p_port` if not provided.
 
 ### Ports
 
-| Service        | Port  | Protocol | Description                   |
-| -------------- | ----- | -------- | ----------------------------- |
-| Execution RPC  | 8545  | HTTP     | JSON-RPC API endpoint         |
-| Execution Auth | 8551  | HTTP     | Engine API (internal)         |
-| Execution P2P  | 30303 | TCP/UDP  | Peer-to-peer networking       |
-| Consensus API  | 35070 | HTTP     | Consensus Health/API endpoint |
-| Consensus P2P  | 34070 | TCP      | Consensus networking          |
-| Metrics        | 9001  | HTTP     | Prometheus metrics            |
+| Service        | Mainnet | Testnet | Devnet | Protocol | Exposed   | Description                |
+| -------------- | ------- | ------- | ------ | -------- | --------- | -------------------------- |
+| Execution RPC  | 8545    | 8546    | 8547   | HTTP     | Localhost | User-facing JSON-RPC API   |
+| Execution Auth | 8551    | 8551    | 8551   | HTTP     | No        | Engine API (internal only) |
+| Execution P2P  | 30303   | 30304   | 30305  | TCP/UDP  | Yes       | Execution layer peering    |
+| Consensus API  | 35070   | 35070   | 35070  | HTTP     | No        | Consensus health & API     |
+| Consensus P2P  | 34070   | 34071   | 34072  | TCP      | Yes       | Consensus layer peering    |
+| Metrics        | 9001    | 9001    | 9001   | HTTP     | No        | Prometheus scrape target   |
+
+> :warning: Mainnet uses the default ports. In order to avoid collisions when running multiple nodes
+> on the same host, testnet and devnet use different ports.
 
 ## Usage
 
 Run from the repository root.
 
 ```bash
-scripts/use.sh testnet # Select the network configuration
+docker network create plasma # One-time: create shared docker network for nodes + monitoring
+scripts/use.sh testnet # Select the network configuration (required once per clone)
 docker compose up # Run a node and follow logs
 docker compose -f monitoring/compose.yml up -d # Run the monitoring stack detached
-docker compose -f compose.yml -f monitoring/compose.yml up -d # Run a node + monitoring detached
 docker compose logs -n 1000 -f # Display the 1000 most recent log entries and follow logs
 docker compose down # Stop the node
 docker compose down -v # Stop node and delete all data volumes
@@ -228,8 +233,8 @@ s3://plasma-mainnet-db-backups/mainnet/observer-0/06-22-26/execution-backup-2026
 |             | **Devnet:** ~100 GB free                                            |
 
 > **Cost note:** Data transfer out from `us-east-2` is ~$0.09/GB for the first 10 TB/month.
-> Transferring from an EC2 instance **in the same region** is free. Running your node in
-> `us-east-2` is the most cost-effective option.
+> Transferring from an EC2 instance **in the same region** is free. Running your node in `us-east-2`
+> is the most cost-effective option.
 
 ### Step 1: Download
 
@@ -279,11 +284,11 @@ aws s3 cp \
 
 ### Step 2: Import snapshots
 
-If a snapshot exists, the compose stack imports it **automatically**. Two one-shot services
-`import-consensus-snapshot` and `import-execution-snapshot` run before the node on every
-`docker compose up` and import the newest `*-backup-*.tar.gz` they find in `SNAPSHOT_DIRECTORY`.
-When a node database already exists (e.g. restarting an existing node), or when no snapshot is
-present in the `SNAPSHOT_DIRECTORY`, these services exit and the node starts normally.
+If a snapshot exists, the compose stack imports it **automatically**. The `initialize-consensus` and
+`initialize-execution` services import the newest `*-backup-*.tar.gz` they find in
+`SNAPSHOT_DIRECTORY` before initializing the databases, on every `docker compose up`. When a node
+database already exists (e.g. restarting an existing node), or when no snapshot is present in the
+`SNAPSHOT_DIRECTORY`, the import step is skipped and the node starts normally.
 
 > :information_source: Note:
 >
