@@ -63,9 +63,14 @@ scripts/use.sh mainnet
 # Start the node
 docker compose up -d
 
-# Optional: Verify
+# Optional: Verify via docker compose (currently used network via scripts/use.sh)
 docker compose ps
 docker compose logs -f consensus
+docker compose logs -f execution
+# Optional: Verify via docker
+docker ps
+docker logs -f mainnet-consensus
+docker logs -f mainnet-execution
 # Optional: Start monitoring, Grafana available at http://localhost:3000
 docker compose -f monitoring/compose.yml up -d
 # Optional: Start more nodes, devnet, testnet and mainnet nodes can coexist on the same host
