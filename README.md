@@ -67,7 +67,7 @@ docker compose up -d
 docker compose ps
 docker compose logs -f consensus
 # Optional: Start monitoring, Grafana available at http://localhost:3000
-docker compose -f monitoring/compose.yml -d
+docker compose -f monitoring/compose.yml up -d
 # Optional: Start more nodes, devnet, testnet and mainnet nodes can coexist on the same host
 scripts/use.sh testnet
 docker compose up -d
