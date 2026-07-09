@@ -9,4 +9,7 @@ datasources:
     isDefault: true
     editable: true
     jsonData:
-      timeInterval: 5s
+      # Must match prometheus's global scrape_interval: grafana derives
+      # $__rate_interval from it; claiming a smaller value yields rate windows
+      # with <2 samples, i.e. intermittently empty panels.
+      timeInterval: 15s
