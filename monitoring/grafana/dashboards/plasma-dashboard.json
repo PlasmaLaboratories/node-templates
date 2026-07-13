@@ -39,29 +39,127 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "One row per running plasma container (cAdvisor). Status reflects whether the container's metrics endpoint is reachable (up).",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "continuous-BlPu"
+            "mode": "thresholds"
           },
-          "fieldMinMax": false,
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false,
+            "inspect": false
+          },
           "mappings": [],
-          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": 0
-              },
-              {
-                "color": "green",
-                "value": 10
               }
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "0": {
+                        "color": "red",
+                        "index": 1,
+                        "text": "DOWN"
+                      },
+                      "1": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "UP"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Uptime"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Memory"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Disk"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 6,
@@ -71,47 +169,120 @@
       },
       "id": 76,
       "options": {
-        "displayMode": "gradient",
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "maxVizHeight": 30,
-        "minVizHeight": 10,
-        "minVizWidth": 8,
-        "namePlacement": "top",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
           "fields": "",
-          "values": false
+          "reducer": ["sum"],
+          "show": false
         },
-        "showUnfilled": true,
-        "sizing": "auto",
-        "text": {},
-        "valueMode": "color"
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Container"
+          }
+        ]
       },
       "pluginVersion": "12.1.1",
       "targets": [
         {
-          "disableTextWrap": false,
-          "editorMode": "builder",
+          "editorMode": "code",
           "exemplar": false,
-          "expr": "count by(network) (container_last_seen{name=~\".*(execution|consensus)\",network=~\"$network\"})",
-          "format": "time_series",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
+          "expr": "max by(name, network, service, repository, tag) (label_replace(label_replace(label_replace(time() - container_start_time_seconds{name=~\".*-(execution|consensus)$\",network=~\"$network\"}, \"tag\", \"$2\", \"image\", \"^(.+):([^:]+)$\"), \"repository\", \"$1\", \"image\", \"^(.+):([^:]+)$\"), \"service\", \"$1\", \"container_label_com_docker_compose_service\", \"(.+)\"))",
+          "format": "table",
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
+          "range": false,
+          "refId": "A"
+        },
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max by(name) (label_replace(up{job=\"plasma\",network=~\"$network\"}, \"name\", \"$1\", \"instance\", \"(.+)\"))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "B"
+        },
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by(name) (rate(container_cpu_usage_seconds_total{name=~\".*-(execution|consensus)$\",network=~\"$network\"}[2m]))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "C"
+        },
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max by(name) (container_memory_working_set_bytes{name=~\".*-(execution|consensus)$\",network=~\"$network\"})",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "D"
+        },
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max by(name) (label_replace(plasma_persistence_lmdb_data_file_bytes{network=~\"$network\"}, \"name\", \"$1\", \"instance\", \"(.+)\")) or sum by(name) (label_replace({__name__=~\"reth_db_table_size|reth_static_files_segment_size\",network=~\"$network\"}, \"name\", \"$1\", \"instance\", \"(.+)\"))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "E"
         }
       ],
-      "title": "Docker Images",
-      "type": "bargauge"
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "name",
+            "mode": "inner"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Time 4": true,
+              "Time 5": true,
+              "network": true,
+              "service": true
+            },
+            "indexByName": {
+              "name": 0,
+              "repository": 1,
+              "tag": 2,
+              "Value #B": 3,
+              "Value #A": 4,
+              "Value #C": 5,
+              "Value #D": 6,
+              "Value #E": 7
+            },
+            "renameByName": {
+              "Value #A": "Uptime",
+              "Value #B": "Status",
+              "Value #C": "CPU",
+              "Value #D": "Memory",
+              "Value #E": "Disk",
+              "name": "Container",
+              "repository": "Image",
+              "tag": "Tag"
+            }
+          }
+        }
+      ],
+      "title": "Containers",
+      "type": "table"
     },
     {
       "collapsed": false,
@@ -3838,8 +4009,8 @@
             "uid": "prometheus"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "(container_fs_usage_bytes{name=~\".*-consensus\",network=~\"$network\"} * 100) / container_fs_limit_bytes{name=~\".*-consensus\",network=~\"$network\"}",
+          "editorMode": "code",
+          "expr": "plasma_persistence_lmdb_data_file_bytes{network=~\"$network\"} * 100 / on() group_left() max(node_filesystem_size_bytes{mountpoint=~\"/|/var/lib/docker\",fstype!=\"tmpfs\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -3954,11 +4125,11 @@
             "uid": "prometheus"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "max by(name) (increase(container_fs_usage_bytes{name=~\".*-consensus\",network=~\"$network\"}[1h]))",
+          "editorMode": "code",
+          "expr": "delta(plasma_persistence_lmdb_data_file_bytes{network=~\"$network\"}[1h])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -4394,7 +4565,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_receive_bytes_total{image=~\".*plasma-consensus.*\",network=~\"$network\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_receive_bytes_total{image=~\".*plasma-consensus.*\",network=~\"$network\"}[2m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -4500,7 +4671,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_transmit_bytes_total{image=~\".*plasma-consensus.*\",network=~\"$network\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_transmit_bytes_total{image=~\".*plasma-consensus.*\",network=~\"$network\"}[2m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -4606,7 +4777,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_receive_packets_total{image=~\".*plasma-consensus.*\",network=~\"$network\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_receive_packets_total{image=~\".*plasma-consensus.*\",network=~\"$network\"}[2m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "__auto",
@@ -4711,7 +4882,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_transmit_packets_total{image=~\".*plasma-consensus.*\",network=~\"$network\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_transmit_packets_total{image=~\".*plasma-consensus.*\",network=~\"$network\"}[2m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "__auto",
@@ -4806,8 +4977,8 @@
             "uid": "prometheus"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "(container_fs_usage_bytes{name=~\".*-execution\",network=~\"$network\"} * 100) / container_fs_limit_bytes{name=~\".*-execution\",network=~\"$network\"}",
+          "editorMode": "code",
+          "expr": "(sum by(instance) (reth_db_table_size{network=~\"$network\"}) + sum by(instance) (reth_static_files_segment_size{network=~\"$network\"})) * 100 / on() group_left() max(node_filesystem_size_bytes{mountpoint=~\"/|/var/lib/docker\",fstype!=\"tmpfs\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -4922,11 +5093,11 @@
             "uid": "prometheus"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "max by(name) (increase(container_fs_usage_bytes{name=~\".*-execution\",network=~\"$network\"}[1h]))",
+          "editorMode": "code",
+          "expr": "sum by(instance) (delta(reth_db_table_size{network=~\"$network\"}[1h])) + sum by(instance) (delta(reth_static_files_segment_size{network=~\"$network\"}[1h]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -5362,7 +5533,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_receive_bytes_total{image=~\".*reth.*\",network=~\"$network\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_receive_bytes_total{image=~\".*reth.*\",network=~\"$network\"}[2m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -5468,7 +5639,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_transmit_bytes_total{image=~\".*reth.*\",network=~\"$network\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_transmit_bytes_total{image=~\".*reth.*\",network=~\"$network\"}[2m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -5574,7 +5745,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_receive_packets_total{image=~\".*reth.*\",network=~\"$network\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_receive_packets_total{image=~\".*reth.*\",network=~\"$network\"}[2m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "__auto",
@@ -5679,7 +5850,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "sum by(image) (rate(container_network_transmit_packets_total{image=~\".*reth.*\",network=~\"$network\"}[$__rate_interval]))",
+          "expr": "sum by(image) (rate(container_network_transmit_packets_total{image=~\".*reth.*\",network=~\"$network\"}[2m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "__auto",
