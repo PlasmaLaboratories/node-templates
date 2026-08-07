@@ -13,52 +13,6 @@ identity_file_path = "/consensus/ec-secp256k1-non-validator.der"
 trusted_only = false
 discovery.enabled = true
 
-[api]
-enabled = true
-host = "0.0.0.0"
-port = 35070
-
-[validators]
-[validators.0]
-validator_keystore_pk_file_path = "/node/keys/bls12-381-public-key-0.hex"
-identity_file_path = "/node/identities/ec-secp256k1-validator-public-compressed-0.hex"
-
-[validators.1]
-validator_keystore_pk_file_path = "/node/keys/bls12-381-public-key-1.hex"
-identity_file_path = "/node/identities/ec-secp256k1-validator-public-compressed-1.hex"
-
-[validators.2]
-validator_keystore_pk_file_path = "/node/keys/bls12-381-public-key-2.hex"
-identity_file_path = "/node/identities/ec-secp256k1-validator-public-compressed-2.hex"
-
-[validators.3]
-validator_keystore_pk_file_path = "/node/keys/bls12-381-public-key-3.hex"
-identity_file_path = "/node/identities/ec-secp256k1-validator-public-compressed-3.hex"
-
-[validators.4]
-validator_keystore_pk_file_path = "/node/keys/bls12-381-public-key-4.hex"
-identity_file_path = "/node/identities/ec-secp256k1-validator-public-compressed-4.hex"
-
-[validators.5]
-validator_keystore_pk_file_path = "/node/keys/bls12-381-public-key-5.hex"
-identity_file_path = "/node/identities/ec-secp256k1-validator-public-compressed-5.hex"
-
-[validators.6]
-validator_keystore_pk_file_path = "/node/keys/bls12-381-public-key-6.hex"
-identity_file_path = "/node/identities/ec-secp256k1-validator-public-compressed-6.hex"
-
-[validators.7]
-validator_keystore_pk_file_path = "/node/keys/bls12-381-public-key-7.hex"
-identity_file_path = "/node/identities/ec-secp256k1-validator-public-compressed-7.hex"
-
-[validators.8]
-validator_keystore_pk_file_path = "/node/keys/bls12-381-public-key-8.hex"
-identity_file_path = "/node/identities/ec-secp256k1-validator-public-compressed-8.hex"
-
-[validators.9]
-validator_keystore_pk_file_path = "/node/keys/bls12-381-public-key-9.hex"
-identity_file_path = "/node/identities/ec-secp256k1-validator-public-compressed-9.hex"
-
 [network.bootstrap_nodes.0]
 api_host = "plasma-devnet-observer-cs-0.plasmalabs.tech"
 p2p_port = 34070
@@ -73,3 +27,58 @@ peer_id = "16Uiu2HAmArKLpRaVMMJHoWzyUfyPHAkQezpZ82cA5ab8y1LioWLw"
 api_host = "plasma-devnet-observer-cs-2.plasmalabs.tech"
 p2p_port = 34070
 peer_id = "16Uiu2HAkurfBfGQWtHwUCY25BqqRLpbZ2nbxYhGRhDQmsNnu1fGJ"
+
+[network.bls_peer_ids]
+85cbc5e18f06b1d95d0c5e7de94bb2e1f8dbd6215b3e6b6d404816e6be47b5db42347a059315cef9ae21a2eabb4955b8 = "16Uiu2HAmM3rMjaj885LyJb5Xr6xaJ8Sw4JFsFDJ5AKjUePQSYEC8"
+8add9519019593993f8d03bc0be0079a7880c82fbfec6a8b01234bd9cae175e3ef29b3bca66472776cb58136a38b8ea7 = "16Uiu2HAm9oJtC4Adk8ZJqxtcn8gsUnYRPZcpNzfwJvVe4eN9osye"
+8773c64e512d7bd6ec8c432426c0785de374e8bd90172f00fbfcc70906ed712dd2ba9e191880eae38cf83bea84aa4517 = "16Uiu2HAmPiq9YCzXrGWHwJq1fAzRZS22uCH6Ms6RvECZpDrsWjLN"
+a86736eacf0ac9c1be62138357925cd0865532c376cde2f73fbc01317df994b051e27b58887447828a0f21c7369ae063 = "16Uiu2HAkxGtYrho5Jwr7o247rtT9h1b5aQNjmV4ZhDiM3DLEG2c1"
+b55dc859f101843ef4645e73537bb9c95791483ff2c991fcba815021165682527bdd07a4c05a0b7042958033156695ca = "16Uiu2HAkw1Ynta8yiSfNLiCafsDMvbS6K7fEDTWAwc2feDsG3aH5"
+b9c9a17e267a21bb69257edd3280b8b72a96d6232a7c3c5c570fe52069096f7109f623d1fd0ba62a49adc9ae37647152 = "16Uiu2HAm8BkMAVtmtoC1PYUvWLZYsfjEVVntx9ybZtWeWBZaS4S2"
+ad3e5a41308a43c565b24e9eed45fa41fe49d596c2df68c012f9ef192a40b3358a1945890b1a28207adef8db653fa4cb = "16Uiu2HAmMo3MgP1zEH2tJPR9BBj3Zo73bCysjyJSxFFoerpSM8y8"
+b51a5c99735a40750fabd93a317875b4c87f5c69b737cef58b4b5bc798e5787b2accfd2d47f6cf6104b416eccb8082ed = "16Uiu2HAkxScQkR1ZHF8rkRqtaz3p7oM621sEfRqLzJdLGWMvKebq"
+92f7dd03038d737de75f63606659ae7a3c9d1baf4e3bdd22eedb085801a5fb2cf392f358e25d097f8f5d9f41cb0232ad = "16Uiu2HAmMGNycX4ExugWH8u5KcPkCBRE8WC54FCdni4Jx2V1jQcL"
+a9f62d62d104d4392824b3673a305c5569797f67ddda3f62ca4cdcf3a95fffd75922aa0077f39d228df4593cf5b7a36f = "16Uiu2HAmLx7aSNmsguRnw1KcNQptJoi4uFXoEvFsNo4M3V4fgW5A"
+
+[api]
+enabled = true
+host = "0.0.0.0"
+port = 35070
+
+[chain.aquila]
+activation_height = 601200
+contract_address = "0x96470a72f158d44d6DF999EE73e5a1d7a76502ec"
+epoch_length = 1200
+handoff_window = 600
+speculative_prefetch = 599
+unsafe_allow_short_handoff_window = true
+
+[chain.static_committee.0]
+bls_public_key = "85cbc5e18f06b1d95d0c5e7de94bb2e1f8dbd6215b3e6b6d404816e6be47b5db42347a059315cef9ae21a2eabb4955b8"
+
+[chain.static_committee.1]
+bls_public_key = "8add9519019593993f8d03bc0be0079a7880c82fbfec6a8b01234bd9cae175e3ef29b3bca66472776cb58136a38b8ea7"
+
+[chain.static_committee.2]
+bls_public_key = "8773c64e512d7bd6ec8c432426c0785de374e8bd90172f00fbfcc70906ed712dd2ba9e191880eae38cf83bea84aa4517"
+
+[chain.static_committee.3]
+bls_public_key = "a86736eacf0ac9c1be62138357925cd0865532c376cde2f73fbc01317df994b051e27b58887447828a0f21c7369ae063"
+
+[chain.static_committee.4]
+bls_public_key = "b55dc859f101843ef4645e73537bb9c95791483ff2c991fcba815021165682527bdd07a4c05a0b7042958033156695ca"
+
+[chain.static_committee.5]
+bls_public_key = "b9c9a17e267a21bb69257edd3280b8b72a96d6232a7c3c5c570fe52069096f7109f623d1fd0ba62a49adc9ae37647152"
+
+[chain.static_committee.6]
+bls_public_key = "ad3e5a41308a43c565b24e9eed45fa41fe49d596c2df68c012f9ef192a40b3358a1945890b1a28207adef8db653fa4cb"
+
+[chain.static_committee.7]
+bls_public_key = "b51a5c99735a40750fabd93a317875b4c87f5c69b737cef58b4b5bc798e5787b2accfd2d47f6cf6104b416eccb8082ed"
+
+[chain.static_committee.8]
+bls_public_key = "92f7dd03038d737de75f63606659ae7a3c9d1baf4e3bdd22eedb085801a5fb2cf392f358e25d097f8f5d9f41cb0232ad"
+
+[chain.static_committee.9]
+bls_public_key = "a9f62d62d104d4392824b3673a305c5569797f67ddda3f62ca4cdcf3a95fffd75922aa0077f39d228df4593cf5b7a36f"
