@@ -61,11 +61,16 @@ services:
         if [ ! -f /consensus/data.mdb ]; then
           echo "INFO Generating consensus database for $$NETWORK network"
           if [ -n "$${NODE_ROLE:-}" ]; then
+            if [ "$$NODE_ROLE" = "validator" ]; then
+              config_file=validator
+            else
+              config_file=non-validator
+            fi
             plasma-cli init \
               --data-dir /consensus \
               --chain /node/genesis.json \
               "$$NODE_ROLE" \
-              --config-path /tmp/non-validator.toml
+              --config-path "/tmp/$$config_file.toml"
           else
             plasma-cli init \
               --chain /node/genesis.json \
@@ -88,6 +93,7 @@ services:
       - ${SNAPSHOT_DIRECTORY}:/snapshots:ro
       - ./config/${NETWORK}/genesis.json:/node/genesis.json:ro
       - ./config/${NETWORK}/non-validator.toml:/tmp/non-validator.toml:ro
+      - ./config/${NETWORK}/validator.toml:/tmp/validator.toml:ro
     depends_on:
       initialize-openssl:
         condition: service_completed_successfully
@@ -211,8 +217,15 @@ services:
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
-        plasma-cli observer \
-          --config-path /tmp/non-validator.toml \
+        if [ "$${NODE_ROLE:-observer}" = "validator" ]; then
+          role=node
+          config_file=validator
+        else
+          role=observer
+          config_file=non-validator
+        fi
+        plasma-cli "$$role" \
+          --config-path "/tmp/$$config_file.toml" \
           --no-color \
           --timeout-stream-manager 10ms \
           --telemetry.enable-metrics \
@@ -224,11 +237,16 @@ services:
       - "${CONSENSUS_P2P_PORT}:34070"
     expose:
       - "9001" # metrics
-    env_file: config/${NETWORK}/.env
+    env_file:
+      - config/${NETWORK}/.env
+      - path: config/${NETWORK}/.env.secret
+        required: false
     container_name: ${NETWORK}-consensus
     volumes:
       - consensus-data:/consensus:rw
       - ./config/${NETWORK}/non-validator.toml:/tmp/non-validator.toml:ro
+      - ./config/${NETWORK}/validator.toml:/tmp/validator.toml:ro
+      - ${VALIDATOR_KEYSTORE_FILE:-/dev/null}:/consensus-secrets/validator-keystore.json:ro
       - jwt-secret:/jwt:ro
       - ./config/${NETWORK}/identities:/node/identities:ro
       - ./config/${NETWORK}/keys:/node/keys:ro

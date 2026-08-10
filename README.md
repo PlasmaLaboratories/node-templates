@@ -2,9 +2,9 @@
 
 <img src="assets/plasma-logo.png" alt="Plasma" width="104" />
 
-# Plasma Non-Validator Templates
+# Plasma Node Templates
 
-**Templates and deployment configurations for running Plasma non-validator (observer) nodes.**
+**Templates and deployment configurations for validator and non-validator Plasma nodes.**
 
 [![Website](https://img.shields.io/badge/website-plasma.org-14342B)](https://www.plasma.org)
 ![Networks](https://img.shields.io/badge/networks-mainnet%20%C2%B7%20testnet%20%C2%B7%20devnet-14342B)
@@ -15,7 +15,7 @@
 
 ## Contents
 
-- [Plasma Non-Validator Templates](#plasma-non-validator-templates)
+- [Plasma Node Templates](#plasma-node-templates)
   - [Contents](#contents)
   - [Networks](#networks)
   - [Quick Start](#quick-start)
@@ -27,6 +27,7 @@
   - [Usage](#usage)
     - [Node troubleshooting](#node-troubleshooting)
       - [Sync Issues](#sync-issues)
+  - [Running a Validator](#running-a-validator)
   - [Monitoring](#monitoring)
   - [Performance](#performance)
   - [Database Snapshots (optional)](#database-snapshots-optional)
@@ -88,30 +89,41 @@ monitoring/                   # Monitoring stack, compose.yml, Prometheus and Gr
 scripts/                      # Scripts such as use.sh and download-snapshot.sh
 config/                       # Per-network configuration and data
 └── {network}/                # Networks: devnet, testnet, mainnet
-    ├── .env                  # Configure network, images, tags, snapshots, trusted peers
-    ├── non-validator.toml    # Consensus config, including this network's bootstrap nodes
+    ├── .env                  # Configure network, role, images, tags, snapshots, trusted peers
+    ├── non-validator.toml    # Consensus config for NODE_ROLE=observer
+    ├── validator.toml        # Consensus config for NODE_ROLE=validator (devnet/testnet only, see below)
     ├── genesis.json          # Chain genesis
     ├── keys/                 # BLS12-381 validator public keys
     └── identities/           # Validator identity files
 ```
 
+The `.env`'s `NODE_ROLE` value selects the config file: `non-validator.toml` or `validator.toml`.
+
 ## Configuration
 
-Each network's config lives under `config/{network}/`. The `.env` holds the network name, the image
-versions and tags, the snapshot directory (`SNAPSHOT_DIRECTORY`), and the execution trusted-peers
-list (`EXECUTION_TRUSTED_PEERS`); `non-validator.toml` holds the consensus configuration including
-that network's bootstrap nodes. One shared `compose.yml` serves all networks. The schema below is
-for consensus `1.0.0`; 0.15.0 networks use `[validators.*]` file paths instead — see
-[Upgrading](#upgrading).
+Each network's configuration is under `config/{network}/`. The `.env` file holds:
 
-> Execution peers are passed to reth on the command line via `EXECUTION_TRUSTED_PEERS`, but
-> consensus bootstrap nodes live in `non-validator.toml`: consensus 0.15.0 has no CLI/env option for
-> them, so they must be in the config file the observer reads.
+- the network name
+- the node role (`NODE_ROLE`)
+- the image versions and tags
+- the snapshot directory (`SNAPSHOT_DIRECTORY`)
+- the execution trusted-peers list (`EXECUTION_TRUSTED_PEERS`)
+
+The `non-validator.toml` and `validator.toml` files hold the consensus configuration. This includes
+each network's bootstrap nodes. One shared `compose.yml` serves all networks.
+
+The schema below is for consensus version `1.0.0`. Networks on consensus version `0.15.0` use
+`[validators.*]` file paths instead. See [Upgrading](#upgrading) for details.
+
+> The command line sets execution peers, through `EXECUTION_TRUSTED_PEERS`. Consensus bootstrap
+> nodes work differently: consensus version `0.15.0` has no command-line or environment-variable
+> option for them. You must set them in the config file instead — `non-validator.toml` or
+> `validator.toml`.
 
 ### Consensus Configuration
 
-Each network has its own `config/{network}/non-validator.toml`. The files are identical apart from
-the per-network `[network.bootstrap_nodes.*]` entries.
+Each network has its own `config/{network}/non-validator.toml` file. Networks on consensus `1.0.0`
+also have a `config/{network}/validator.toml` file. See [Running a Validator](#running-a-validator).
 
 Key sections:
 
@@ -127,8 +139,8 @@ Key sections:
 
 ### Peer Discovery
 
-The checked-in templates use `plasma-consensus-public:0.15.0` with peer discovery enabled. External
-addresses can be configured for nodes behind NAT:
+The included templates use `plasma-consensus-public:0.15.0` with peer discovery enabled. You can
+configure an external address for nodes behind NAT:
 
 ```toml
 [network]
@@ -154,8 +166,8 @@ The port defaults to `p2p_port` if not provided.
 | Consensus P2P  | 34070   | 34071   | 34072  | TCP      | Yes       | Consensus layer peering    |
 | Metrics        | 9001    | 9001    | 9001   | HTTP     | No        | Prometheus scrape target   |
 
-> :warning: Mainnet uses the default ports. In order to avoid collisions when running multiple nodes
-> on the same host, testnet and devnet use different ports.
+> :warning: Mainnet uses the default ports. Testnet and devnet use different ports. This prevents
+> port conflicts when you run multiple nodes on one host.
 
 ## Usage
 
@@ -182,6 +194,71 @@ curl -s -X POST -H "Content-Type: application/json" \
   --data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}' \
   http://localhost:8545
 ```
+
+## Running a Validator
+
+You can run a validator on **devnet** and **testnet**. Both use consensus `1.0.0`. You need
+coordination from the Plasma team to do this. Mainnet stays observer-only until it upgrades to
+consensus `1.0.0` — see [Upgrading](#upgrading).
+
+Running `plasma-cli node` with your own keystore does not automatically add you to the active
+validator set. Contact the network operator first, to get included.
+
+1. **Generate a validator keystore.** Use
+   [ethstaker-deposit-cli](https://github.com/ethstaker/ethstaker-deposit-cli) to generate a BLS12-381 keystore and password.
+
+   Run it via Docker, pinned to the `v1.3.0` image by digest rather than a mutable tag:
+
+   ```bash
+   mkdir -p ./keys
+   docker run --rm -it \
+     -v "$(pwd)/keys:/keys" \
+     ghcr.io/ethstaker/ethstaker-deposit-cli@sha256:45ce887f0fdc0389bfb5ad12c7ab48a5882f0f804f06f94ce2e179bc55bad4c4 \
+     new-mnemonic \
+     --num_validators 1 \
+     --chain mainnet \
+     --folder /keys
+   ```
+
+   This command writes a keystore file to
+   `./keys/validator_keys/keystore-m_12381_3600_0_0_0-<timestamp>.json` on the host. That file is
+   your `VALIDATOR_KEYSTORE_FILE`.
+
+   The `deposit_data-*.json` file is not required and can be ignored.
+
+   The `--chain` flag also has no effect on Plasma. Use `mainnet` as its value.
+
+   You can verify the image's build attestation before you run it:
+
+   ```bash
+   gh attestation verify \
+     oci://ghcr.io/ethstaker/ethstaker-deposit-cli@sha256:45ce887f0fdc0389bfb5ad12c7ab48a5882f0f804f06f94ce2e179bc55bad4c4 \
+     --owner ethstaker
+   ```
+
+2. **Point the compose stack at your keystore.** In `config/{network}/.env`, set:
+
+   ```bash
+   NODE_ROLE=validator
+   VALIDATOR_KEYSTORE_FILE="/absolute/path/to/your/keystore.json"
+   ```
+
+3. **Set your fee recipient.** Edit `config/{network}/validator.toml`. Replace
+   `suggested_fee_recipient` with your own Plasma address. This address receives the fees from
+   blocks your validator produces.
+
+4. **Provide the keystore password without committing it.**
+
+   ```bash
+   cp config/{network}/.env.secret.example config/{network}/.env.secret
+   # then edit config/{network}/.env.secret and set VALIDATOR_KEYSTORE_PASSWORD
+   ```
+
+5. **Start the node as usual.** Run `scripts/use.sh <network>` and `docker compose up -d`, from
+   [Usage](#usage).
+
+You can switch back to observer mode at any time. Set `NODE_ROLE=observer` in `.env`. Restart the
+node.
 
 ## Monitoring
 
