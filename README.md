@@ -39,14 +39,15 @@
       - [403 Forbidden](#403-forbidden)
       - [Empty bucket listing](#empty-bucket-listing)
       - [Wrong prefix](#wrong-prefix)
+  - [Upgrading](#upgrading)
 
 ## Networks
 
 | Network | Chain ID | Consensus | Execution    | GHCR Auth Required |
 | ------- | -------- | --------- | ------------ | ------------------ |
 | mainnet | 9745     | 0.15.0    | Reth v1.11.3 | No                 |
-| testnet | 9746     | 0.15.0    | Reth v1.11.3 | No                 |
-| devnet  | 9747     | 0.15.0    | Reth v1.11.3 | No                 |
+| testnet | 9746     | 1.0.0     | Reth v1.11.3 | No                 |
+| devnet  | 9747     | 1.0.0     | Reth v1.11.3 | No                 |
 
 ## Quick Start
 
@@ -99,8 +100,9 @@ config/                       # Per-network configuration and data
 Each network's config lives under `config/{network}/`. The `.env` holds the network name, the image
 versions and tags, the snapshot directory (`SNAPSHOT_DIRECTORY`), and the execution trusted-peers
 list (`EXECUTION_TRUSTED_PEERS`); `non-validator.toml` holds the consensus configuration including
-that network's bootstrap nodes. One shared `compose.yml` serves all networks. The validator keys,
-identities, and genesis stay as files because the consensus client (0.15.0) reads them from disk.
+that network's bootstrap nodes. One shared `compose.yml` serves all networks. The schema below is
+for consensus `1.0.0`; 0.15.0 networks use `[validators.*]` file paths instead — see
+[Upgrading](#upgrading).
 
 > Execution peers are passed to reth on the command line via `EXECUTION_TRUSTED_PEERS`, but
 > consensus bootstrap nodes live in `non-validator.toml`: consensus 0.15.0 has no CLI/env option for
@@ -119,7 +121,8 @@ Key sections:
 | `[persistence]`               | `data_dir`                                                                                   | Consensus data storage path       |
 | `[network]`                   | `p2p_port`, `interval`, `timeout`, `identity_file_path`, `trusted_only`, `discovery.enabled` | P2P networking and peer discovery |
 | `[api]`                       | `enabled`, `host`, `port`                                                                    | Consensus API endpoint            |
-| `[validators.*]`              | `validator_keystore_pk_file_path`, `identity_file_path`                                      | Validator committee               |
+| `[chain.static_committee.*]`  | `bls_public_key`                                                                             | Validator committee               |
+| `[network.bls_peer_ids]`      | `<bls_public_key>` = `<peer_id>`                                                             | BLS key → peer ID mapping         |
 | `[network.bootstrap_nodes.*]` | `api_host`, `p2p_port`, `peer_id`                                                            | Consensus bootstrap peers         |
 
 ### Peer Discovery
@@ -357,5 +360,9 @@ progress, check back later.
 #### Wrong prefix
 
 Use `<network>/<snapshot-source>/<date>/`, for example `mainnet/observer-0/06-06-26/`
+
+## Upgrading
+
+See [UPGRADING.md](UPGRADING.md) for moving a network to a new consensus version.
 
 ---

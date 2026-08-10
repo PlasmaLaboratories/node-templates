@@ -60,9 +60,17 @@ services:
 
         if [ ! -f /consensus/data.mdb ]; then
           echo "INFO Generating consensus database for $$NETWORK network"
-          plasma-cli init \
-            --chain /node/genesis.json \
-            --data-dir /consensus
+          if [ -n "$${NODE_ROLE:-}" ]; then
+            plasma-cli init \
+              --data-dir /consensus \
+              --chain /node/genesis.json \
+              "$$NODE_ROLE" \
+              --config-path /tmp/non-validator.toml
+          else
+            plasma-cli init \
+              --chain /node/genesis.json \
+              --data-dir /consensus
+          fi
         fi
 
         if [ ! -f /config/peer-id.txt ]; then
@@ -79,6 +87,7 @@ services:
       - genesis:/config:rw
       - ${SNAPSHOT_DIRECTORY}:/snapshots:ro
       - ./config/${NETWORK}/genesis.json:/node/genesis.json:ro
+      - ./config/${NETWORK}/non-validator.toml:/tmp/non-validator.toml:ro
     depends_on:
       initialize-openssl:
         condition: service_completed_successfully
