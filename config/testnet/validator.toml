@@ -40,52 +40,52 @@ peer_id = "16Uiu2HAmLzq4LCDQ8FNSPs5ESsWAiSUfDQjXjtbrx3fG9M9qZrU6"
 # [network.trusted_peers.v0]
 # api_host = "plasma-testnet-validator-cs-0.plasmalabs.tech"
 # p2p_port = 34070
-# peer_id = "16Uiu2HAmM3rMjaj885LyJb5Xr6xaJ8Sw4JFsFDJ5AKjUePQSYEC8"
+# peer_id = "16Uiu2HAm9VojHMAAMAKF7a4cdrsNDTaYis3oFWbK3JecthZA4gMk"
 #
 # [network.trusted_peers.v1]
 # api_host = "plasma-testnet-validator-cs-1.plasmalabs.tech"
 # p2p_port = 34070
-# peer_id = "16Uiu2HAm9oJtC4Adk8ZJqxtcn8gsUnYRPZcpNzfwJvVe4eN9osye"
+# peer_id = "16Uiu2HAm4SQW76nEKeGZwQ8azRtYfNNC1mZb4khsJR3rvhaqPv3h"
 #
 # [network.trusted_peers.v2]
 # api_host = "plasma-testnet-validator-cs-2.plasmalabs.tech"
 # p2p_port = 34070
-# peer_id = "16Uiu2HAmPiq9YCzXrGWHwJq1fAzRZS22uCH6Ms6RvECZpDrsWjLN"
+# peer_id = "16Uiu2HAmGNEFW4EFP2pDkN6yoa5JzB7iqvad4NqXRnuepqNyUs3x"
 #
 # [network.trusted_peers.v3]
 # api_host = "plasma-testnet-validator-cs-3.plasmalabs.tech"
 # p2p_port = 34070
-# peer_id = "16Uiu2HAkxGtYrho5Jwr7o247rtT9h1b5aQNjmV4ZhDiM3DLEG2c1"
+# peer_id = "16Uiu2HAmUx7Vm3voDz4Wt5KiQCDRqRMwNuip5vArpviXn3psZQhk"
 #
 # [network.trusted_peers.v4]
 # api_host = "plasma-testnet-validator-cs-4.plasmalabs.tech"
 # p2p_port = 34070
-# peer_id = "16Uiu2HAkw1Ynta8yiSfNLiCafsDMvbS6K7fEDTWAwc2feDsG3aH5"
+# peer_id = "16Uiu2HAmLkucJtxQ6oa4TTmjn45dVQbm8iPx2HAKJE4NMGiE2XAQ"
 #
 # [network.trusted_peers.v5]
 # api_host = "plasma-testnet-validator-cs-5.plasmalabs.tech"
 # p2p_port = 34070
-# peer_id = "16Uiu2HAm8BkMAVtmtoC1PYUvWLZYsfjEVVntx9ybZtWeWBZaS4S2"
+# peer_id = "16Uiu2HAmAPSLPskKdM22Y9maw7T8uwK9uH9GzDy8FNGP5oj9vmMm"
 #
 # [network.trusted_peers.v6]
 # api_host = "plasma-testnet-validator-cs-6.plasmalabs.tech"
 # p2p_port = 34070
-# peer_id = "16Uiu2HAmMo3MgP1zEH2tJPR9BBj3Zo73bCysjyJSxFFoerpSM8y8"
+# peer_id = "16Uiu2HAkzsMspP7FosFWUN554jiB9bVqTVkRNGUZs4ersaLpNuRU"
 #
 # [network.trusted_peers.v7]
 # api_host = "plasma-testnet-validator-cs-7.plasmalabs.tech"
 # p2p_port = 34070
-# peer_id = "16Uiu2HAkxScQkR1ZHF8rkRqtaz3p7oM621sEfRqLzJdLGWMvKebq"
+# peer_id = "16Uiu2HAm7FvFMyWK7Hpzu3ZXX8fku8rJd5YY4rCzWtck6bgm7Wj3"
 #
 # [network.trusted_peers.v8]
 # api_host = "plasma-testnet-validator-cs-8.plasmalabs.tech"
 # p2p_port = 34070
-# peer_id = "16Uiu2HAmMGNycX4ExugWH8u5KcPkCBRE8WC54FCdni4Jx2V1jQcL"
+# peer_id = "16Uiu2HAmESAECJ1Y4W7GK2EmpxSUfWoCbs5CidE1pu4vEEGb2qBM"
 #
 # [network.trusted_peers.v9]
 # api_host = "plasma-testnet-validator-cs-9.plasmalabs.tech"
 # p2p_port = 34070
-# peer_id = "16Uiu2HAmLx7aSNmsguRnw1KcNQptJoi4uFXoEvFsNo4M3V4fgW5A"
+# peer_id = "16Uiu2HAkzVxFvwUvmYgr1NUBX5WhSpFJSbDrVYSwTd5pSgkFfTtL"
 
 [network.bls_peer_ids]
 b2f8ba24adce5aae4c4355bfe662c7abef765fd7d18fc1facd88db53da919039ae1fa59e2fd334c35f8644934f0313af = "16Uiu2HAm9VojHMAAMAKF7a4cdrsNDTaYis3oFWbK3JecthZA4gMk"
