@@ -6,3 +6,5 @@ config/*/snapshots/*
 # Root network selector symlink (.env -> config/<network>/.env), managed by scripts/use.sh.
 # Untracked so each clone can pick its own network without git pull resetting it.
 /.env
+
+config/*/.env.secret
