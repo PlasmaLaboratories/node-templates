@@ -202,7 +202,7 @@ coordination from the Plasma team to do this. Mainnet stays observer-only until 
 consensus `1.0.0` — see [Upgrading](#upgrading).
 
 Running `plasma-cli node` with your own keystore does not automatically add you to the active
-validator set. Contact the network operator first, to get included.
+validator set. If you're interested in your node being enrolled as an active validator, please contact the Plasma team.
 
 1. **Generate a validator keystore.** Use
    [ethstaker-deposit-cli](https://github.com/ethstaker/ethstaker-deposit-cli) to generate a BLS12-381 keystore and password.
