@@ -248,8 +248,6 @@ services:
       - ./config/${NETWORK}/validator.toml:/tmp/validator.toml:ro
       - ${VALIDATOR_KEYSTORE_FILE:-/dev/null}:/consensus-secrets/validator-keystore.json:ro
       - jwt-secret:/jwt:ro
-      - ./config/${NETWORK}/identities:/node/identities:ro
-      - ./config/${NETWORK}/keys:/node/keys:ro
       - ./config/${NETWORK}/genesis.json:/node/genesis.json:ro
     depends_on:
       initialize-consensus:
