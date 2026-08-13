@@ -8,7 +8,7 @@
 
 [![Website](https://img.shields.io/badge/website-plasma.org-14342B)](https://www.plasma.org)
 ![Networks](https://img.shields.io/badge/networks-mainnet%20%C2%B7%20testnet%20%C2%B7%20devnet-14342B)
-![Consensus](https://img.shields.io/badge/consensus-0.15.0-14342B)
+![Consensus](https://img.shields.io/badge/consensus-1.0.0-14342B)
 ![Execution](https://img.shields.io/badge/execution-Reth%20v1.11.3-14342B)
 
 </div>
@@ -46,7 +46,7 @@
 
 | Network | Chain ID | Consensus | Execution    | GHCR Auth Required |
 | ------- | -------- | --------- | ------------ | ------------------ |
-| mainnet | 9745     | 0.15.0    | Reth v1.11.3 | No                 |
+| mainnet | 9745     | 1.0.0     | Reth v1.11.3 | No                 |
 | testnet | 9746     | 1.0.0     | Reth v1.11.3 | No                 |
 | devnet  | 9747     | 1.0.0     | Reth v1.11.3 | No                 |
 
@@ -91,10 +91,8 @@ config/                       # Per-network configuration and data
 └── {network}/                # Networks: devnet, testnet, mainnet
     ├── .env                  # Configure network, role, images, tags, snapshots, trusted peers
     ├── non-validator.toml    # Consensus config for NODE_ROLE=observer
-    ├── validator.toml        # Consensus config for NODE_ROLE=validator (devnet/testnet only, see below)
-    ├── genesis.json          # Chain genesis
-    ├── keys/                 # BLS12-381 validator public keys
-    └── identities/           # Validator identity files
+    ├── validator.toml        # Consensus config for NODE_ROLE=validator
+    └── genesis.json          # Chain genesis
 ```
 
 The `.env`'s `NODE_ROLE` value selects the config file: `non-validator.toml` or `validator.toml`.
@@ -139,7 +137,7 @@ Key sections:
 
 ### Peer Discovery
 
-The included templates use `plasma-consensus-public:0.15.0` with peer discovery enabled. You can
+The included templates use `plasma-consensus-public:1.0.0` with peer discovery enabled. You can
 configure an external address for nodes behind NAT:
 
 ```toml
@@ -197,9 +195,8 @@ curl -s -X POST -H "Content-Type: application/json" \
 
 ## Running a Validator
 
-You can run a validator on **devnet** and **testnet**. Both use consensus `1.0.0`. You need
-coordination from the Plasma team to do this. Mainnet stays observer-only until it upgrades to
-consensus `1.0.0` — see [Upgrading](#upgrading).
+You can run a validator on **devnet**, **testnet**, and **mainnet**. All three use consensus
+`1.0.0`. You need coordination from the Plasma team to do this.
 
 Running `plasma-cli node` with your own keystore does not automatically add you to the active
 validator set. If you're interested in your node being enrolled as an active validator, please contact the Plasma team.
