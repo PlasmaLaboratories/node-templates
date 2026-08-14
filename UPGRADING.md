@@ -37,9 +37,10 @@ Apply both to `config/<network>/`:
 +bls_public_key = "<bls_public_key_hex_0>"
 ```
 
-`bls_public_key` values come from your existing `config/<network>/keys/*.hex` files. The `peer_id`
-mapping isn't derivable locally — get it from your network operator. `[chain.aquila]` is optional;
-only add it if your network uses epoch-based committee rotation.
+Check the config files at `config/<network>` in this repo for the full lists
+
+
+`[chain.aquila]` is only required for networks with committee rotation (currently only devnet)
 
 Once nothing references `/node/keys/*` or `/node/identities/*`, those directories can be deleted.
 
