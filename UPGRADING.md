@@ -47,7 +47,7 @@ Once nothing references `/node/keys/*` or `/node/identities/*`, those directorie
 
 ```bash
 scripts/use.sh <network>
-docker compose down -v
+docker compose down
 docker compose up -d
 docker compose logs initialize-consensus   # exit 0, no "Invalid config schema" error
 ```
