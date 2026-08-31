@@ -40,7 +40,7 @@ Apply both to `config/<network>/`:
 Check the config files at `config/<network>` in this repo for the full lists
 
 
-`[chain.aquila]` is only required for networks with committee rotation (currently only devnet)
+`[chain.aquila]` is only required for networks with committee rotation
 
 Once nothing references `/node/keys/*` or `/node/identities/*`, those directories can be deleted.
 
