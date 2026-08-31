@@ -8,7 +8,7 @@
 
 [![Website](https://img.shields.io/badge/website-plasma.org-14342B)](https://www.plasma.org)
 ![Networks](https://img.shields.io/badge/networks-mainnet%20%C2%B7%20testnet%20%C2%B7%20devnet-14342B)
-![Consensus](https://img.shields.io/badge/consensus-1.0.0-14342B)
+![Consensus](https://img.shields.io/badge/consensus-1.1.0-14342B)
 ![Execution](https://img.shields.io/badge/execution-Reth%20v1.11.3-14342B)
 
 </div>
@@ -46,9 +46,9 @@
 
 | Network | Chain ID | Consensus | Execution    | GHCR Auth Required |
 | ------- | -------- | --------- | ------------ | ------------------ |
-| mainnet | 9745     | 1.0.0     | Reth v1.11.3 | No                 |
-| testnet | 9746     | 1.0.0     | Reth v1.11.3 | No                 |
-| devnet  | 9747     | 1.0.0     | Reth v1.11.3 | No                 |
+| mainnet | 9745     | 1.1.0     | Reth v1.11.3 | No                 |
+| testnet | 9746     | 1.1.0     | Reth v1.11.3 | No                 |
+| devnet  | 9747     | 1.1.0     | Reth v1.11.3 | No                 |
 
 ## Quick Start
 
@@ -110,7 +110,7 @@ Each network's configuration is under `config/{network}/`. The `.env` file holds
 The `non-validator.toml` and `validator.toml` files hold the consensus configuration. This includes
 each network's bootstrap nodes. One shared `compose.yml` serves all networks.
 
-The schema below is for consensus version `1.0.0`. Networks on consensus version `0.15.0` use
+The schema below is for consensus version `1.1.0`. Networks on consensus version `0.15.0` use
 `[validators.*]` file paths instead. See [Upgrading](#upgrading) for details.
 
 > The command line sets execution peers, through `EXECUTION_TRUSTED_PEERS`. Consensus bootstrap
@@ -120,7 +120,7 @@ The schema below is for consensus version `1.0.0`. Networks on consensus version
 
 ### Consensus Configuration
 
-Each network has its own `config/{network}/non-validator.toml` file. Networks on consensus `1.0.0`
+Each network has its own `config/{network}/non-validator.toml` file. Networks on consensus `1.1.0`
 also have a `config/{network}/validator.toml` file. See [Running a Validator](#running-a-validator).
 
 Key sections:
@@ -137,7 +137,7 @@ Key sections:
 
 ### Peer Discovery
 
-The included templates use `plasma-consensus-public:1.0.0` with peer discovery enabled. You can
+The included templates use `plasma-consensus-public:1.1.0` with peer discovery enabled. You can
 configure an external address for nodes behind NAT:
 
 ```toml
@@ -196,7 +196,7 @@ curl -s -X POST -H "Content-Type: application/json" \
 ## Running a Validator
 
 You can run a validator on **devnet**, **testnet**, and **mainnet**. All three use consensus
-`1.0.0`. You need coordination from the Plasma team to do this.
+`1.1.0`. You need coordination from the Plasma team to do this.
 
 Running `plasma-cli node` with your own keystore does not automatically add you to the active
 validator set. If you're interested in your node being enrolled as an active validator, please contact the Plasma team.
@@ -379,13 +379,21 @@ To restore by hand instead, e.g. into volumes managed outside this compose proje
 below. Note the compose project is named after the network (`name: ${NETWORK}`), so the volumes are
 `<network>_consensus-data` and `<network>_execution-data` (e.g. `mainnet_consensus-data`).
 
+Load the selected network's pinned images:
+
+```bash
+set -a
+. "./config/${NETWORK}/.env"
+set +a
+```
+
 Restore consensus as `/consensus/data.mdb`, preserving the node identity files:
 
 ```bash
 docker run --rm --user 0:0 --entrypoint /bin/bash \
   -v "${NETWORK}_consensus-data:/consensus" \
   -v "$BACKUP_DIR:/backups:ro" \
-  ghcr.io/plasmalaboratories/plasma-consensus-public:0.15.0 \
+  "${CONSENSUS_IMAGE}:${CONSENSUS_TAG}" \
   -lc 'set -euo pipefail
 rm -f /consensus/data.mdb /consensus/lock.mdb
 tar -xzf /backups/consensus-backup-*.tar.gz -C /consensus \
@@ -399,7 +407,7 @@ Restore execution, preserving the local Reth discovery secret if the snapshot do
 docker run --rm --user 0:0 --entrypoint /bin/bash \
   -v "${NETWORK}_execution-data:/execution" \
   -v "$BACKUP_DIR:/backups:ro" \
-  ghcr.io/paradigmxyz/reth:v1.8.3 \
+  "${EXECUTION_IMAGE}:${EXECUTION_TAG}" \
   -lc 'set -euo pipefail
 tmp=/tmp/discovery-secret
 [ -f /execution/discovery-secret ] && cp -p /execution/discovery-secret "$tmp"
