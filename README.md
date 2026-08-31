@@ -131,6 +131,7 @@ Key sections:
 | `[persistence]`               | `data_dir`                                                                                   | Consensus data storage path       |
 | `[network]`                   | `p2p_port`, `interval`, `timeout`, `identity_file_path`, `trusted_only`, `discovery.enabled` | P2P networking and peer discovery |
 | `[api]`                       | `enabled`, `host`, `port`                                                                    | Consensus API endpoint            |
+| `[chain.aquila]`              | `activation_height`, `contract_address`, `epoch_length`, `handoff_window`, `speculative_prefetch` | Epoch-based committee rotation (optional; testnet and devnet only) |
 | `[chain.static_committee.*]`  | `bls_public_key`                                                                             | Validator committee               |
 | `[network.bls_peer_ids]`      | `<bls_public_key>` = `<peer_id>`                                                             | BLS key → peer ID mapping         |
 | `[network.bootstrap_nodes.*]` | `api_host`, `p2p_port`, `peer_id`                                                            | Consensus bootstrap peers         |
