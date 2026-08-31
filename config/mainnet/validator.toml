@@ -105,7 +105,7 @@ host = "0.0.0.0"
 port = 35070
 
 [chain.aquila]
-activation_height = 32620000
+activation_height = 33300000
 contract_address = "0x6c50b8ca8EeAa1c75dEe5b5EA79772AcAbc92F48"
 epoch_length = 20000
 handoff_window = 10000
