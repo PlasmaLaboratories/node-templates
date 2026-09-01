@@ -54,8 +54,8 @@
 
 ```bash
 # Clone
-git clone https://github.com/PlasmaLaboratories/non-validator-templates.git
-cd non-validator-templates
+git clone https://github.com/PlasmaLaboratories/node-templates.git
+cd node-templates
 
 # One-time: create the shared bridge network used by the nodes and monitoring
 docker network create plasma
@@ -125,21 +125,22 @@ also have a `config/{network}/validator.toml` file. See [Running a Validator](#r
 
 Key sections:
 
-| Section                       | Fields                                                                                       | Description                       |
-| ----------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------- |
-| _(top-level)_                 | `engine_api_url`, `consensus_api_host`, `authrpc_jwtsecret`                                  | Execution engine connection       |
-| `[persistence]`               | `data_dir`                                                                                   | Consensus data storage path       |
-| `[network]`                   | `p2p_port`, `interval`, `timeout`, `identity_file_path`, `trusted_only`, `discovery.enabled` | P2P networking and peer discovery |
-| `[api]`                       | `enabled`, `host`, `port`                                                                    | Consensus API endpoint            |
-| `[chain.aquila]`              | `activation_height`, `contract_address`, `epoch_length`, `handoff_window`, `speculative_prefetch` | Epoch-based committee rotation — required to match your network's published values once that network has scheduled Aquila activation |
-| `[chain.static_committee.*]`  | `bls_public_key`                                                                             | Validator committee               |
-| `[network.bls_peer_ids]`      | `<bls_public_key>` = `<peer_id>`                                                             | BLS key → peer ID mapping         |
-| `[network.bootstrap_nodes.*]` | `api_host`, `p2p_port`, `peer_id`                                                            | Consensus bootstrap peers         |
+| Section                       | Fields                                                                                                                                 | Description                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| _(top-level)_                 | `engine_api_url`, `consensus_api_host`, `authrpc_jwtsecret`, `max_ancestry_check_depth`                                                | Execution engine and validation settings |
+| `[persistence]`               | `data_dir`                                                                                                                             | Consensus data storage path              |
+| `[network]`                   | `p2p_port`, `interval`, `timeout`, `identity_file_path`, `trusted_only`, `discovery.enabled`, `bootstrap_dnsaddrs`                     | P2P networking and peer discovery        |
+| `[api]`                       | `enabled`, `host`, `port`                                                                                                              | Consensus API endpoint                   |
+| `[chain.aquila]`              | `activation_height`, `contract_address`, `epoch_length`, `handoff_window`, `speculative_prefetch`, `unsafe_allow_short_handoff_window` | Per-network committee rotation           |
+| `[chain.static_committee.*]`  | `bls_public_key`                                                                                                                       | Validator committee                      |
+| `[network.bls_peer_ids]`      | `<bls_public_key>` = `<peer_id>`                                                                                                       | BLS key → peer ID mapping                |
+| `[network.bootstrap_nodes.*]` | `api_host`, `p2p_port`, `peer_id`                                                                                                      | Consensus bootstrap peers                |
 
 ### Peer Discovery
 
-The included templates use `plasma-consensus-public:1.1.0` with peer discovery enabled. You can
-configure an external address for nodes behind NAT:
+Observer templates use `plasma-consensus-public:1.1.0` with peer discovery enabled. Validator
+templates use trusted peers with discovery disabled by default. You can configure an external
+address for observer nodes behind NAT:
 
 ```toml
 [network]
@@ -189,9 +190,10 @@ docker compose down -v # Stop node and delete all data volumes
 Check execution client sync status:
 
 ```bash
+RPC_PORT=8545 # mainnet; use 8546 for testnet or 8547 for devnet.
 curl -s -X POST -H "Content-Type: application/json" \
   --data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}' \
-  http://localhost:8545
+  "http://localhost:${RPC_PORT}"
 ```
 
 ## Running a Validator
@@ -262,9 +264,12 @@ node.
 
 Monitor your node's health:
 
-- Execution RPC: `http://localhost:8545`
-- Consensus API: `http://localhost:35070`
-- Metrics: `http://localhost:9001/metrics`
+- Execution RPC (host): `http://localhost:8545` on mainnet, `http://localhost:8546` on testnet,
+  or `http://localhost:8547` on devnet.
+- Consensus API (Docker network only): `http://<network>-consensus:35070`. Compose does not publish
+  this port to the host.
+- Metrics (Docker network only): `http://<network>-execution:9001/metrics` and
+  `http://<network>-consensus:9001/metrics`. Prometheus scrapes these internal endpoints.
 
 ## Performance
 
@@ -296,8 +301,8 @@ plasma-mainnet-db-backups/
 For example:
 
 ```
-s3://plasma-mainnet-db-backups/mainnet/observer-0/06-22-26/consensus-backup-20260606-020000.tar.gz
-s3://plasma-mainnet-db-backups/mainnet/observer-0/06-22-26/execution-backup-20260606-020000.tar.gz
+s3://plasma-mainnet-db-backups/mainnet/observer-0/06-06-26/consensus-backup-20260606-020000.tar.gz
+s3://plasma-mainnet-db-backups/mainnet/observer-0/06-06-26/execution-backup-20260606-020000.tar.gz
 ```
 
 ### Prerequisites
@@ -380,12 +385,17 @@ To restore by hand instead, e.g. into volumes managed outside this compose proje
 below. Note the compose project is named after the network (`name: ${NETWORK}`), so the volumes are
 `<network>_consensus-data` and `<network>_execution-data` (e.g. `mainnet_consensus-data`).
 
-Load the selected network's pinned images:
+Load the selected network's pinned images and use its snapshot directory:
 
 ```bash
+# Use the same network as the download step; change this to testnet or devnet as needed.
+NETWORK="mainnet"
+scripts/use.sh "$NETWORK"
 set -a
-. "./config/${NETWORK}/.env"
+. "./.env"
 set +a
+BACKUP_DIR="${BACKUP_DIR:-${SNAPSHOT_DIRECTORY}}"
+BACKUP_DIR="$(cd "$BACKUP_DIR" && pwd)"
 ```
 
 Restore consensus as `/consensus/data.mdb`, preserving the node identity files:
