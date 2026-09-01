@@ -54,8 +54,8 @@
 
 ```bash
 # Clone
-git clone https://github.com/PlasmaLaboratories/non-validator-templates.git
-cd non-validator-templates
+git clone https://github.com/PlasmaLaboratories/node-templates.git
+cd node-templates
 
 # One-time: create the shared bridge network used by the nodes and monitoring
 docker network create plasma
@@ -190,9 +190,10 @@ docker compose down -v # Stop node and delete all data volumes
 Check execution client sync status:
 
 ```bash
+RPC_PORT=8545 # mainnet; use 8546 for testnet or 8547 for devnet.
 curl -s -X POST -H "Content-Type: application/json" \
   --data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}' \
-  http://localhost:8545
+  "http://localhost:${RPC_PORT}"
 ```
 
 ## Running a Validator
@@ -263,9 +264,12 @@ node.
 
 Monitor your node's health:
 
-- Execution RPC: `http://localhost:8545`
-- Consensus API: `http://localhost:35070`
-- Metrics: `http://localhost:9001/metrics`
+- Execution RPC (host): `http://localhost:8545` on mainnet, `http://localhost:8546` on testnet,
+  or `http://localhost:8547` on devnet.
+- Consensus API (Docker network only): `http://<network>-consensus:35070`. Compose does not publish
+  this port to the host.
+- Metrics (Docker network only): `http://<network>-execution:9001/metrics` and
+  `http://<network>-consensus:9001/metrics`. Prometheus scrapes these internal endpoints.
 
 ## Performance
 
@@ -297,8 +301,8 @@ plasma-mainnet-db-backups/
 For example:
 
 ```
-s3://plasma-mainnet-db-backups/mainnet/observer-0/06-22-26/consensus-backup-20260606-020000.tar.gz
-s3://plasma-mainnet-db-backups/mainnet/observer-0/06-22-26/execution-backup-20260606-020000.tar.gz
+s3://plasma-mainnet-db-backups/mainnet/observer-0/06-06-26/consensus-backup-20260606-020000.tar.gz
+s3://plasma-mainnet-db-backups/mainnet/observer-0/06-06-26/execution-backup-20260606-020000.tar.gz
 ```
 
 ### Prerequisites

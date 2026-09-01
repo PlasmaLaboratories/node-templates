@@ -184,12 +184,12 @@
           }
         ]
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "max by(name, network, service, repository, tag) (label_replace(label_replace(label_replace(time() - container_start_time_seconds{name=~\".*-(execution|consensus)$\",network=~\"$network\"}, \"tag\", \"$2\", \"image\", \"^(.+):([^:]+)$\"), \"repository\", \"$1\", \"image\", \"^(.+):([^:]+)$\"), \"service\", \"$1\", \"container_label_com_docker_compose_service\", \"(.+)\"))",
+          "expr": "max by(name, network, service, repository, tag) (label_replace(label_replace(label_replace(time() - container_start_time_seconds{name=~\".*-(execution|consensus)$\",network=~\"$network\"}, \"tag\", \"$2\", \"image\", \"^([^@]+):([^:@]+)(@sha256:[^:]+)?$\"), \"repository\", \"$1\", \"image\", \"^([^@]+):([^:@]+)(@sha256:[^:]+)?$\"), \"service\", \"$1\", \"container_label_com_docker_compose_service\", \"(.+)\"))",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -374,7 +374,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -386,7 +386,7 @@
           "expr": "max by(instance) (up{service=\"consensus\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -472,7 +472,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -484,7 +484,7 @@
           "expr": "max by(instance) (up{service=\"execution\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -596,7 +596,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -608,7 +608,7 @@
           "expr": "max by(instance) (reth_blockchain_tree_canonical_chain_height{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -679,7 +679,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -689,7 +689,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "max by(instance) (rate(reth_blockchain_tree_canonical_chain_height{network=~\"$network\"}[$__rate_interval]))",
+          "expr": "max by(instance) (deriv(reth_blockchain_tree_canonical_chain_height{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -699,7 +699,7 @@
           "useBackend": false
         }
       ],
-      "title": "Blocks per per second",
+      "title": "Blocks per second",
       "transformations": [
         {
           "id": "reduce",
@@ -707,17 +707,6 @@
             "includeTimeField": false,
             "mode": "reduceFields",
             "reducers": ["max"]
-          }
-        },
-        {
-          "id": "sortBy",
-          "options": {
-            "fields": {},
-            "sort": [
-              {
-                "field": "validator-3"
-              }
-            ]
           }
         }
       ],
@@ -801,7 +790,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
@@ -894,7 +883,7 @@
           "reverse": false
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
@@ -973,7 +962,7 @@
           "reverse": false
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
@@ -1122,7 +1111,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -1228,7 +1217,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
@@ -1327,7 +1316,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
@@ -1426,7 +1415,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
@@ -1525,7 +1514,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
@@ -1624,7 +1613,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
@@ -1723,7 +1712,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -1735,7 +1724,7 @@
           "expr": "sum by(instance) (rate(reth_network_propagated_transactions{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -1845,7 +1834,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -1954,7 +1943,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -2041,7 +2030,7 @@
           "unit": ""
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -2171,7 +2160,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -2257,7 +2246,7 @@
           "reverse": false
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -2385,7 +2374,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -2512,7 +2501,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -2608,7 +2597,7 @@
           "reverse": false
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
@@ -2676,17 +2665,17 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "quantile($quantile, max by(instance) (reth_engine_rpc_new_payload_total_gas{network=~\"$network\"})) / {\"$block_gas_limit\"}",
+          "expr": "(max by(instance, network) (reth_consensus_engine_beacon_new_payload_total_gas{quantile=~\"$quantile\",network=~\"$network\"}) / on(network) group_left() (label_replace(vector(36000000), \"network\", \"mainnet\", \"__name__\", \".*\") or label_replace(vector(25000000), \"network\", \"testnet\", \"__name__\", \".*\") or label_replace(vector(36000000), \"network\", \"devnet\", \"__name__\", \".*\"))) * 100",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "Block Utilization % q90",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -2790,7 +2779,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -2893,7 +2882,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -2905,7 +2894,7 @@
           "expr": "max by(instance) (reth_transaction_pool_pending_pool_size_bytes{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -2996,7 +2985,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
@@ -3010,7 +2999,7 @@
           "useBackend": false
         }
       ],
-      "title": "Peding Txs (Waiting for block)",
+      "title": "Pending Txs (Waiting for block)",
       "type": "timeseries"
     },
     {
@@ -3095,7 +3084,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -3107,7 +3096,7 @@
           "expr": "sum by(instance) (rate(reth_transaction_pool_invalid_transactions{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -3198,7 +3187,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
@@ -3297,7 +3286,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -3309,7 +3298,7 @@
           "expr": "sum by(instance) (rate(reth_transaction_pool_removed_transactions{network=~\"$network\"}[$__rate_interval]))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -3399,7 +3388,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "disableTextWrap": false,
@@ -3497,7 +3486,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -3509,7 +3498,7 @@
           "expr": "max by(instance) (reth_transaction_pool_total_legacy_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -3599,7 +3588,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -3611,7 +3600,7 @@
           "expr": "max by(instance) (reth_transaction_pool_total_eip1559_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -3701,7 +3690,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -3713,7 +3702,7 @@
           "expr": "max by(instance) (reth_transaction_pool_total_eip2930_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -3803,7 +3792,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -3905,7 +3894,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -3917,7 +3906,7 @@
           "expr": "max by(instance) (reth_transaction_pool_total_eip7702_transactions{network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{instance}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -4001,7 +3990,7 @@
         "sizing": "auto",
         "text": {}
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -4117,7 +4106,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -4221,7 +4210,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -4230,10 +4219,10 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(name) (label_replace(container_memory_working_set_bytes{name=~\".*-consensus\",network=~\"$network\"}, \"instance\", \"$1\", \"namespace\", \"$extract_short_name\"))",
+          "expr": "max by(name) (container_memory_working_set_bytes{name=~\".*-consensus\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{name}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -4325,7 +4314,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -4337,7 +4326,7 @@
           "expr": "max by(name) (container_memory_usage_bytes{name=~\".*-consensus\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{name}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -4427,7 +4416,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -4440,7 +4429,7 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{name}}",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -4507,31 +4496,7 @@
             ]
           },
           "unit": "Bps"
-        },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": ["ghcr.io/plasmalaboratories/plasma-consensus:0.12.4"],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        }
       },
       "gridPos": {
         "h": 8,
@@ -4556,7 +4521,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -4662,7 +4627,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -4768,7 +4733,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -4873,7 +4838,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -4969,7 +4934,7 @@
         "sizing": "auto",
         "text": {}
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -5085,7 +5050,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -5189,7 +5154,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -5198,16 +5163,16 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "max by(name) (label_replace(container_memory_working_set_bytes{name=~\".*-execution\",network=~\"$network\"}, \"instance\", \"$1\", \"namespace\", \"$extract_short_name\"))",
+          "expr": "max by(name) (container_memory_working_set_bytes{name=~\".*-execution\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{name}}",
           "range": true,
           "refId": "A",
           "useBackend": false
         }
       ],
-      "title": "Reth Consensus Working Set Memory",
+      "title": "Reth Execution Working Set Memory",
       "type": "timeseries"
     },
     {
@@ -5293,7 +5258,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -5305,13 +5270,13 @@
           "expr": "max by(name) (container_memory_usage_bytes{name=~\".*-execution\",network=~\"$network\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{name}}",
           "range": true,
           "refId": "A",
           "useBackend": false
         }
       ],
-      "title": "Reth Consensus Total Memory",
+      "title": "Reth Execution Total Memory",
       "type": "timeseries"
     },
     {
@@ -5395,7 +5360,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -5408,13 +5373,13 @@
           "fullMetaSearch": false,
           "hide": false,
           "includeNullMetadata": true,
-          "legendFormat": "{{namespace}}",
+          "legendFormat": "{{name}}",
           "range": true,
           "refId": "A",
           "useBackend": false
         }
       ],
-      "title": "Reth Consensus CPU",
+      "title": "Reth Execution CPU",
       "type": "timeseries"
     },
     {
@@ -5475,31 +5440,7 @@
             ]
           },
           "unit": "Bps"
-        },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": ["ghcr.io/paradigmxyz/reth:v1.7.0"],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        }
       },
       "gridPos": {
         "h": 8,
@@ -5524,7 +5465,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -5630,7 +5571,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -5736,7 +5677,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -5841,7 +5782,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "13.2.0",
       "targets": [
         {
           "datasource": {
@@ -5928,18 +5869,6 @@
         ],
         "query": "0.99,0.95,0.9,0.5",
         "type": "custom"
-      },
-      {
-        "current": {
-          "text": "36000000",
-          "value": "36000000"
-        },
-        "description": "",
-        "hide": 2,
-        "name": "block_gas_limit",
-        "query": "36000000",
-        "skipUrlSync": true,
-        "type": "constant"
       },
       {
         "allValue": "inbound|outbound",

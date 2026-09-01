@@ -8,13 +8,14 @@ Use the matching `config/<network>/` templates as the source of truth.
 
 ## 1. Update `.env`
 
-In `config/<network>/.env`, update the consensus image tag and set the node role. Use `validator`
-for a validator node and `observer` for an observer node:
+In `config/<network>/.env`, replace the image/version settings with the current target pins and set
+the node role. Use `validator` for a validator node and `observer` for an observer node:
 
-```diff
--CONSENSUS_TAG=0.15.0
-+CONSENSUS_TAG=1.1.0@sha256:f8d7aa0c63d0188e466a86d76cf24a7d378108e997ad9ae79d8e19eb8ab4d06b
-+NODE_ROLE=observer
+```dotenv
+OPEN_SSL_TAG=3.5.8@sha256:61cec9c1f221755bf995f1f309211b222164599e2d1943b666f878ef644d3a0e
+CONSENSUS_TAG=1.1.0@sha256:f8d7aa0c63d0188e466a86d76cf24a7d378108e997ad9ae79d8e19eb8ab4d06b
+EXECUTION_TAG=v1.11.3@sha256:523e5c6a7ce69e80dc004d9ba9d276e22c35f141671f9847709256bb411cd336
+NODE_ROLE=observer
 ```
 
 `NODE_ROLE` selects the matching config when a new consensus database is initialized.
@@ -64,11 +65,21 @@ values from another network.
 
 Once nothing references `/node/keys/*` or `/node/identities/*`, those directories can be deleted.
 
-## 3. Restart and verify
+## 3. Replace the old consensus database and restart
+
+The `1.1.0` consensus database is not compatible with the `0.15.0` database. Stop the selected
+network, make or retain a backup of its data, and remove only the consensus volume. Do not use
+`docker compose down -v` here: that also removes the execution database and generated secrets.
+
+If a compatible consensus snapshot is present in `SNAPSHOT_DIRECTORY`, the next `docker compose up`
+will restore it automatically. Otherwise, the node initializes a new consensus database and syncs
+from genesis.
 
 ```bash
-scripts/use.sh <network>
+NETWORK="mainnet" # change to testnet or devnet as needed
+scripts/use.sh "$NETWORK"
 docker compose down
+docker volume rm "${NETWORK}_consensus-data"
 docker compose up -d
 docker compose logs initialize-consensus   # exit 0, no "Invalid config schema" error
 ```
