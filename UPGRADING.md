@@ -74,7 +74,8 @@ and generated secrets.
 
 On the first `1.1.0` start, the node migrates legacy consensus state into the current checkpoint
 format. If the consensus volume is intentionally empty or has no usable database, the initializer
-restores a matching snapshot when available or initializes a new database otherwise.
+restores the newest consensus snapshot in `SNAPSHOT_DIRECTORY` when one is present, or initializes
+a new database otherwise.
 
 ```bash
 NETWORK="mainnet" # change to testnet or devnet as needed
