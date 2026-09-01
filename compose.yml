@@ -217,15 +217,18 @@ services:
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
+        role_args=()
         if [ "$${NODE_ROLE:-observer}" = "validator" ]; then
           role=node
           config_file=validator
+          role_args+=(--vote-fanout one)
         else
           role=observer
           config_file=non-validator
         fi
         plasma-cli "$$role" \
           --config-path "/tmp/$$config_file.toml" \
+          "$${role_args[@]}" \
           --no-color \
           --timeout-stream-manager 10ms \
           --telemetry.enable-metrics \
