@@ -2255,7 +2255,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(plasma_networking_connections_duration_seconds_bucket{network=~\"$network\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(instance, network, le) (rate(plasma_networking_connections_duration_seconds_bucket{network=~\"$network\"}[$__rate_interval])))",
           "fullMetaSearch": false,
           "includeNullMetadata": false,
           "legendFormat": "{{instance}}",
