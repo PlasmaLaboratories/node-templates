@@ -3999,7 +3999,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "plasma_persistence_lmdb_data_file_bytes{network=~\"$network\"} * 100 / on() group_left() max(node_filesystem_size_bytes{mountpoint=~\"/|/var/lib/docker\",fstype!=\"tmpfs\"})",
+          "expr": "plasma_persistence_lmdb_data_file_bytes{network=~\"$network\"} * 100 / on() group_left() max(node_filesystem_size_bytes{job=\"node-exporter\", mountpoint=\"/var/lib/docker\", fstype!=\"tmpfs\"} or node_filesystem_size_bytes{job=\"node-exporter\", mountpoint=\"/\", fstype!=\"tmpfs\"} unless on() count(node_filesystem_size_bytes{job=\"node-exporter\", mountpoint=\"/var/lib/docker\", fstype!=\"tmpfs\"}) > 0)",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -4008,6 +4008,7 @@
           "useBackend": false
         }
       ],
+      "description": "Share of the disk backing node data (the /var/lib/docker mount when present, otherwise the root filesystem) used by the consensus LMDB database file. Assumes nodes run on the same host as the monitoring stack.",
       "title": "Consensus Volume Utilization",
       "type": "gauge"
     },
@@ -4943,7 +4944,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "(sum by(instance) (reth_db_table_size{network=~\"$network\"}) + sum by(instance) (reth_static_files_segment_size{network=~\"$network\"})) * 100 / on() group_left() max(node_filesystem_size_bytes{mountpoint=~\"/|/var/lib/docker\",fstype!=\"tmpfs\"})",
+          "expr": "(sum by(instance) (reth_db_table_size{network=~\"$network\"}) + sum by(instance) (reth_static_files_segment_size{network=~\"$network\"})) * 100 / on() group_left() max(node_filesystem_size_bytes{job=\"node-exporter\", mountpoint=\"/var/lib/docker\", fstype!=\"tmpfs\"} or node_filesystem_size_bytes{job=\"node-exporter\", mountpoint=\"/\", fstype!=\"tmpfs\"} unless on() count(node_filesystem_size_bytes{job=\"node-exporter\", mountpoint=\"/var/lib/docker\", fstype!=\"tmpfs\"}) > 0)",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "{{instance}}",
@@ -4952,6 +4953,7 @@
           "useBackend": false
         }
       ],
+      "description": "Share of the disk backing node data (the /var/lib/docker mount when present, otherwise the root filesystem) used by the Reth database tables and static files. Assumes nodes run on the same host as the monitoring stack.",
       "title": "Reth Volume Utilization",
       "type": "gauge"
     },
