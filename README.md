@@ -125,16 +125,16 @@ also have a `config/{network}/validator.toml` file. See [Running a Validator](#r
 
 Key sections:
 
-| Section                       | Fields                                                                                       | Description                       |
-| ----------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------- |
-| _(top-level)_                 | `engine_api_url`, `consensus_api_host`, `authrpc_jwtsecret`                                  | Execution engine connection       |
-| `[persistence]`               | `data_dir`                                                                                   | Consensus data storage path       |
-| `[network]`                   | `p2p_port`, `interval`, `timeout`, `identity_file_path`, `trusted_only`, `discovery.enabled` | P2P networking and peer discovery |
-| `[api]`                       | `enabled`, `host`, `port`                                                                    | Consensus API endpoint            |
-| `[chain.aquila]`              | `activation_height`, `contract_address`, `epoch_length`, `handoff_window`, `speculative_prefetch`, `unsafe_allow_short_handoff_window` | Per-network committee rotation    |
-| `[chain.static_committee.*]`  | `bls_public_key`                                                                             | Validator committee               |
-| `[network.bls_peer_ids]`      | `<bls_public_key>` = `<peer_id>`                                                             | BLS key → peer ID mapping         |
-| `[network.bootstrap_nodes.*]` | `api_host`, `p2p_port`, `peer_id`                                                            | Consensus bootstrap peers         |
+| Section                       | Fields                                                                                                                                 | Description                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| _(top-level)_                 | `engine_api_url`, `consensus_api_host`, `authrpc_jwtsecret`, `max_ancestry_check_depth`                                                | Execution engine and validation settings |
+| `[persistence]`               | `data_dir`                                                                                                                             | Consensus data storage path              |
+| `[network]`                   | `p2p_port`, `interval`, `timeout`, `identity_file_path`, `trusted_only`, `discovery.enabled`, `bootstrap_dnsaddrs`                     | P2P networking and peer discovery        |
+| `[api]`                       | `enabled`, `host`, `port`                                                                                                              | Consensus API endpoint                   |
+| `[chain.aquila]`              | `activation_height`, `contract_address`, `epoch_length`, `handoff_window`, `speculative_prefetch`, `unsafe_allow_short_handoff_window` | Per-network committee rotation           |
+| `[chain.static_committee.*]`  | `bls_public_key`                                                                                                                       | Validator committee                      |
+| `[network.bls_peer_ids]`      | `<bls_public_key>` = `<peer_id>`                                                                                                       | BLS key → peer ID mapping                |
+| `[network.bootstrap_nodes.*]` | `api_host`, `p2p_port`, `peer_id`                                                                                                      | Consensus bootstrap peers                |
 
 ### Peer Discovery
 
