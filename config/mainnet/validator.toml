@@ -104,6 +104,14 @@ enabled = true
 host = "0.0.0.0"
 port = 35070
 
+[chain.aquila]
+activation_height = 33300000
+contract_address = "0x6c50b8ca8EeAa1c75dEe5b5EA79772AcAbc92F48"
+epoch_length = 20000
+handoff_window = 10000
+speculative_prefetch = 9999
+unsafe_allow_short_handoff_window = false
+
 [chain.static_committee.0]
 bls_public_key = "ad840fde21315f757ae4f7b30629d6446fced8648b46adfe6cfcda615ee7d93b2c8bd160fc189899d388133935686972"
 
