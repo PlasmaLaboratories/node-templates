@@ -2264,7 +2264,7 @@
           "useBackend": false
         }
       ],
-      "title": "Consensus Connection Duration (avg over time)",
+      "title": "Consensus Connection Duration (p95)",
       "type": "heatmap"
     },
     {
