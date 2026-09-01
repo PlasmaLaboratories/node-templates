@@ -127,19 +127,20 @@ Key sections:
 
 | Section                       | Fields                                                                                       | Description                       |
 | ----------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------- |
-| _(top-level)_                 | `engine_api_url`, `consensus_api_host`, `authrpc_jwtsecret`                                  | Execution engine connection       |
+| _(top-level)_                 | `engine_api_url`, `consensus_api_host`, `authrpc_jwtsecret`, `max_ancestry_check_depth`       | Execution engine and validation settings |
 | `[persistence]`               | `data_dir`                                                                                   | Consensus data storage path       |
-| `[network]`                   | `p2p_port`, `interval`, `timeout`, `identity_file_path`, `trusted_only`, `discovery.enabled` | P2P networking and peer discovery |
+| `[network]`                   | `p2p_port`, `interval`, `timeout`, `identity_file_path`, `trusted_only`, `discovery.enabled`, `bootstrap_dnsaddrs` | P2P networking and peer discovery |
 | `[api]`                       | `enabled`, `host`, `port`                                                                    | Consensus API endpoint            |
-| `[chain.aquila]`              | `activation_height`, `contract_address`, `epoch_length`, `handoff_window`, `speculative_prefetch` | Epoch-based committee rotation — required to match your network's published values once that network has scheduled Aquila activation |
+| `[chain.aquila]`              | `activation_height`, `contract_address`, `epoch_length`, `handoff_window`, `speculative_prefetch`, `unsafe_allow_short_handoff_window` | Network-specific committee rotation settings |
 | `[chain.static_committee.*]`  | `bls_public_key`                                                                             | Validator committee               |
 | `[network.bls_peer_ids]`      | `<bls_public_key>` = `<peer_id>`                                                             | BLS key → peer ID mapping         |
 | `[network.bootstrap_nodes.*]` | `api_host`, `p2p_port`, `peer_id`                                                            | Consensus bootstrap peers         |
 
 ### Peer Discovery
 
-The included templates use `plasma-consensus-public:1.1.0` with peer discovery enabled. You can
-configure an external address for nodes behind NAT:
+Observer templates use `plasma-consensus-public:1.1.0` with peer discovery enabled. Validator
+templates use trusted peers with discovery disabled by default. You can configure an external
+address for observer nodes behind NAT:
 
 ```toml
 [network]
@@ -380,12 +381,17 @@ To restore by hand instead, e.g. into volumes managed outside this compose proje
 below. Note the compose project is named after the network (`name: ${NETWORK}`), so the volumes are
 `<network>_consensus-data` and `<network>_execution-data` (e.g. `mainnet_consensus-data`).
 
-Load the selected network's pinned images:
+Load the selected network's pinned images and use its snapshot directory:
 
 ```bash
+# Use the same network as the download step; change this to testnet or devnet as needed.
+NETWORK="mainnet"
+scripts/use.sh "$NETWORK"
 set -a
-. "./config/${NETWORK}/.env"
+. "./.env"
 set +a
+BACKUP_DIR="${BACKUP_DIR:-${SNAPSHOT_DIRECTORY}}"
+BACKUP_DIR="$(cd "$BACKUP_DIR" && pwd)"
 ```
 
 Restore consensus as `/consensus/data.mdb`, preserving the node identity files:
