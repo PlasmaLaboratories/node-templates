@@ -65,23 +65,23 @@ values from another network.
 
 Once nothing references `/node/keys/*` or `/node/identities/*`, those directories can be deleted.
 
-## 3. Replace the old consensus database and restart
+## 3. Restart and migrate the consensus database
 
-The `1.1.0` consensus database is not compatible with the `0.15.0` database. Stop the selected
-network, make or retain a backup of its data, and remove only the consensus volume. Do not use
-`docker compose down -v` here: that also removes the execution database and generated secrets.
+The `1.1.0` node can open and migrate the `0.15.0` consensus database in place. Make or retain a
+backup before upgrading, stop the selected network, and keep its named data volumes and generated
+secrets. Do not use `docker compose down -v`: it removes the execution database, consensus database,
+and generated secrets.
 
-If a compatible consensus snapshot is present in `SNAPSHOT_DIRECTORY`, the next `docker compose up`
-will restore it automatically. Otherwise, the node initializes a new consensus database and syncs
-from genesis.
+On the first `1.1.0` start, the node migrates legacy consensus state into the current checkpoint
+format. If the consensus volume is intentionally empty or has no usable database, the initializer
+restores a matching snapshot when available or initializes a new database otherwise.
 
 ```bash
 NETWORK="mainnet" # change to testnet or devnet as needed
 scripts/use.sh "$NETWORK"
 docker compose down
-docker volume rm "${NETWORK}_consensus-data"
 docker compose up -d
-docker compose logs initialize-consensus   # exit 0, no "Invalid config schema" error
+docker compose logs initialize-consensus   # exit 0; migration or initialization completed
 ```
 
 ## Errors
@@ -92,5 +92,5 @@ docker compose logs initialize-consensus   # exit 0, no "Invalid config schema" 
 - An Aquila activation or committee mismatch → copy `[chain.aquila]` and the committee sections
   from the matching network template; activation values are network-specific.
 
-Networks upgrade independently. After upgrading a network to `1.1.0`, do not downgrade its data
-volume to `0.15.0`; the current database format is not backwards compatible.
+Networks upgrade independently. After the `1.1.0` migration has run, do not downgrade that data
+volume to `0.15.0`; rollback is not a supported general compatibility path.
