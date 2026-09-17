@@ -292,19 +292,27 @@ optionally, database schema version. Both files of a snapshot share the same
 `YYYYMMDD-HHMMSS` timestamp in their name, which is what identifies a snapshot:
 
 ```
-plasma-mainnet-db-backups/
-└── observer-0/
-    └── v2/
-        ├── consensus-backup-20260606-020000.tar.gz
-        └── execution-backup-20260606-020000.tar.gz
+plasma-testnet-db-backups/
+├── testnet/observer-0/                              # reth v1 database (reth v1.11.3)
+│   ├── consensus-backup-20260917-020000.tar.gz
+│   └── execution-backup-20260917-020000.tar.gz
+└── observer-12/v2/                                  # reth v2 database (reth v2.5.2)
+    ├── consensus-backup-20260917-020000.tar.gz
+    └── execution-backup-20260917-020000.tar.gz
 ```
 
-For example:
+> :warning: **Pick the snapshot source that matches your `EXECUTION_TAG`.** The execution
+> database schema changed between reth v1 and reth v2. A v2 snapshot does not start on reth
+> v1.11.3, and a v1 snapshot does not start on reth v2.5.2 (reth refuses to open the database).
+> `config/<network>/.env` ships the matching `EXECUTION_TAG` for each network; use the prefix from
+> the table below unless you deliberately changed the tag.
 
-```
-s3://plasma-mainnet-db-backups/observer-0/v2/consensus-backup-20260606-020000.tar.gz
-s3://plasma-mainnet-db-backups/observer-0/v2/execution-backup-20260606-020000.tar.gz
-```
+| Network | Snapshot prefix       | reth version         | Notes                                             |
+| ------- | --------------------- | -------------------- | ------------------------------------------------- |
+| mainnet | `mainnet/observer-0/` | v1.11.3 (`config/mainnet/.env`) | A v2 source will be announced when available |
+| testnet | `testnet/observer-0/` | v1.11.3 (`config/testnet/.env`) |                                              |
+| testnet | `observer-12/v2/`     | v2.5.2               | Only with `EXECUTION_TAG=v2.5.2@...`             |
+| devnet  | `observer-4/v2/`      | v2.5.2 (`config/devnet/.env`)   |                                              |
 
 Object names sort chronologically, so the newest snapshot is always the last one in a listing.
 Older snapshots may still sit under the previous `<network>/<source>/<MM-DD-YY>/` layout; the
@@ -332,30 +340,33 @@ default.
 
 ```bash
 NETWORK="mainnet"
-scripts/download-snapshot.sh --env "$NETWORK" --latest
+SNAPSHOT_PREFIX="mainnet/observer-0/"   # from the table above, must match your EXECUTION_TAG
+scripts/download-snapshot.sh --env "$NETWORK" --prefix "$SNAPSHOT_PREFIX" --latest
 ```
 
 With an AWS profile:
 
 ```bash
-scripts/download-snapshot.sh --env "$NETWORK" --latest --profile plasma-snapshots
+scripts/download-snapshot.sh --env "$NETWORK" --prefix "$SNAPSHOT_PREFIX" --latest --profile plasma-snapshots
 ```
+
+Always pass `--prefix`. When a network publishes snapshots from more than one source, the sources
+run on the same schedule, so their newest snapshots share a timestamp and `--latest` without a
+prefix stops with a "several snapshot sources share the newest timestamp" error rather than
+guessing which database schema you want.
 
 List the available snapshots or select one by timestamp (full `YYYYMMDD-HHMMSS`, or just the
 date as `YYYYMMDD` / `YYYY-MM-DD`):
 
 ```bash
 scripts/download-snapshot.sh --env "$NETWORK" --list
-scripts/download-snapshot.sh --env "$NETWORK" --snapshot 20260606-020000
+scripts/download-snapshot.sh --env "$NETWORK" --prefix "$SNAPSHOT_PREFIX" --snapshot 20260917-020000
 ```
-
-When several snapshot sources publish to the same bucket, narrow the search with `--prefix`, for
-example `--prefix observer-0/`.
 
 For faster download speeds, use [s5cmd](https://github.com/peak/s5cmd)
 
 ```bash
-scripts/download-snapshot.sh --env "$NETWORK" --latest --use-s5cmd # Requires s5cmd in $PATH
+scripts/download-snapshot.sh --env "$NETWORK" --prefix "$SNAPSHOT_PREFIX" --latest --use-s5cmd # Requires s5cmd in $PATH
 ```
 
 Manual AWS CLI fallback:
@@ -363,8 +374,8 @@ Manual AWS CLI fallback:
 ```bash
 NETWORK="mainnet"
 BUCKET="plasma-$NETWORK-db-backups"
-SNAPSHOT_PREFIX="observer-0/v2/"
-SNAPSHOT="20260606-020000"
+SNAPSHOT_PREFIX="mainnet/observer-0/"   # from the table above
+SNAPSHOT="20260917-020000"
 
 aws s3 cp \
   "s3://${BUCKET}/${SNAPSHOT_PREFIX}" \
