@@ -208,7 +208,15 @@ services:
       initialize-execution:
         condition: service_completed_successfully
     networks:
-      - plasma
+      plasma:
+        # Stable per-network DNS name on the shared bridge network, independent of
+        # container_name. The consensus configs' engine_api_url and the Prometheus
+        # scrape targets in monitoring/prometheus.yml address the execution node by
+        # this hostname, so a renamed container keeps working. Requires one stack
+        # per network per Docker host: two stacks of the same network on the shared
+        # `plasma` network would publish the same alias and make DNS ambiguous.
+        aliases:
+          - "${NETWORK}-execution"
 
   consensus:
     image: ${CONSENSUS_IMAGE}:${CONSENSUS_TAG}
@@ -226,9 +234,20 @@ services:
           role=observer
           config_file=non-validator
         fi
+        # Optional Engine API URL override (ENGINE_API_URL, set in the container
+        # environment via config/${NETWORK}/.env or config/${NETWORK}/.env.secret).
+        # When set it is passed to plasma-cli as --engine-api-url, which takes
+        # precedence over the TOML's engine_api_url. When unset or empty, the TOML
+        # value applies unchanged.
+        engine_args=()
+        if [ -n "$${ENGINE_API_URL:-}" ]; then
+          echo "INFO ENGINE_API_URL is set; overriding TOML engine_api_url with $$ENGINE_API_URL" >&2
+          engine_args+=(--engine-api-url "$$ENGINE_API_URL")
+        fi
         plasma-cli "$$role" \
           --config-path "/tmp/$$config_file.toml" \
           "$${role_args[@]}" \
+          "$${engine_args[@]}" \
           --no-color \
           --timeout-stream-manager 10ms \
           --telemetry.enable-metrics \
@@ -258,7 +277,12 @@ services:
       execution:
         condition: service_healthy
     networks:
-      - plasma
+      plasma:
+        # Same stability contract as the execution alias above: the Prometheus
+        # scrape targets in monitoring/prometheus.yml address the consensus node
+        # by this hostname, independent of container_name.
+        aliases:
+          - "${NETWORK}-consensus"
 
 volumes:
   consensus-data:

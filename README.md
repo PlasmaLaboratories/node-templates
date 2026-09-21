@@ -22,11 +22,13 @@
   - [Directory Structure](#directory-structure)
   - [Configuration](#configuration)
     - [Consensus Configuration](#consensus-configuration)
+    - [Execution Engine URL](#execution-engine-url)
     - [Peer Discovery](#peer-discovery)
     - [Ports](#ports)
   - [Usage](#usage)
     - [Node troubleshooting](#node-troubleshooting)
       - [Sync Issues](#sync-issues)
+      - [Engine API unreachable (consensus startup retries)](#engine-api-unreachable-consensus-startup-retries)
   - [Running a Validator](#running-a-validator)
   - [Monitoring](#monitoring)
   - [Performance](#performance)
@@ -86,7 +88,7 @@ docker compose up -d
 compose.yml                   # Network-agnostic service definitions
 .env -> config/{network}/.env # Symlink created by scripts/use.sh, git ignored to survive git pulls
 monitoring/                   # Monitoring stack, compose.yml, Prometheus and Grafana resources
-scripts/                      # Scripts such as use.sh and download-snapshot.sh
+scripts/                      # Scripts: use.sh, download-snapshot.sh, regression.sh
 config/                       # Per-network configuration and data
 └── {network}/                # Networks: devnet, testnet, mainnet
     ├── .env                  # Configure network, role, images, tags, snapshots, trusted peers
@@ -106,6 +108,8 @@ Each network's configuration is under `config/{network}/`. The `.env` file holds
 - the image versions and tags
 - the snapshot directory (`SNAPSHOT_DIRECTORY`)
 - the execution trusted-peers list (`EXECUTION_TRUSTED_PEERS`)
+- the optional consensus Engine API URL override (`ENGINE_API_URL`, see
+  [Execution Engine URL](#execution-engine-url))
 
 The `non-validator.toml` and `validator.toml` files hold the consensus configuration. This includes
 each network's bootstrap nodes. One shared `compose.yml` serves all networks.
@@ -135,6 +139,44 @@ Key sections:
 | `[chain.static_committee.*]`  | `bls_public_key`                                                                                                                       | Validator committee                      |
 | `[network.bls_peer_ids]`      | `<bls_public_key>` = `<peer_id>`                                                                                                       | BLS key → peer ID mapping                |
 | `[network.bootstrap_nodes.*]` | `api_host`, `p2p_port`, `peer_id`                                                                                                      | Consensus bootstrap peers                |
+
+### Execution Engine URL
+
+The consensus node reaches the execution node over the Engine API: `engine_api_url` in
+`validator.toml` / `non-validator.toml`, default `http://<network>-execution:8551`.
+
+That hostname is a **network alias** registered by `compose.yml` on the shared `plasma` bridge
+network (`networks.plasma.aliases`), not the container name:
+
+- Renaming or recreating the execution container keeps the `<network>-execution` alias attached,
+  so the Engine URL, the JWT-authenticated connection, and the Prometheus scrapes in
+  `monitoring/prometheus.yml` keep working. Container names are cosmetic on Docker networks;
+  service aliases are the addressing contract.
+- Run one stack per network per host. Two stacks of the same network share the `plasma` network
+  and would publish the same alias, making DNS ambiguous. To run a second stack of the same
+  network, isolate it on its own Docker network and set `ENGINE_API_URL` (below).
+
+Both services mount the same `jwt-secret` volume: consensus reads `authrpc_jwtsecret
+= "/jwt/jwt.hex"` from the TOML and execution starts reth with `--authrpc.jwtsecret /jwt/jwt.hex`.
+The pairing must match; a renamed container does not affect this shared secret.
+
+The compose files target Docker. When execution runs outside the stack — bare-metal host,
+Kubernetes, or a remote machine — point consensus at it with `ENGINE_API_URL` in
+`config/<network>/.env` (team-wide) or `config/<network>/.env.secret` (per-host, git-ignored):
+
+```dotenv
+ENGINE_API_URL="http://host.docker.internal:8551"
+```
+
+When set, consensus passes it to `plasma-cli` as `--engine-api-url`, which overrides the TOML's
+`engine_api_url`; when unset or empty the TOML value applies unchanged. The override is logged at
+startup. Reth must listen on an interface reachable from the consensus container
+(`--authrpc.addr 0.0.0.0` is the compose default) and both sides must share the same JWT secret;
+the compose-managed `jwt-secret` volume only covers the in-stack case.
+
+After changing addressing, the alias, or the override, run `scripts/regression.sh`. It renders
+`docker compose config` for each network and exercises the consensus entrypoint with a stubbed
+`plasma-cli`; it requires `docker compose` and `python3`, and starts no containers.
 
 ### Peer Discovery
 
@@ -195,6 +237,32 @@ curl -s -X POST -H "Content-Type: application/json" \
   --data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}' \
   "http://localhost:${RPC_PORT}"
 ```
+
+#### Engine API unreachable (consensus startup retries)
+
+Symptom: `docker compose logs consensus` shows repeated `engine_exchangeCapabilities` retries and
+the observer/validator loop never starts, while the execution container itself looks healthy.
+
+1. Confirm the Engine URL resolves from inside the consensus container:
+
+   ```bash
+   docker compose exec consensus \
+     bash -c 'exec 3<>/dev/tcp/mainnet-execution/8551' && echo reachable
+   ```
+
+   Use the hostname from `engine_api_url` (or `ENGINE_API_URL`) for your network.
+
+2. If it does not resolve, check that execution is running and carries the alias:
+   `docker compose ps`, then
+   `docker inspect --format '{{json .NetworkSettings.Networks.plasma.Aliases}}' <container>`.
+   If containers were renamed outside `compose.yml`, recreate the pair so the alias from the
+   compose file is attached again: `docker compose up -d --force-recreate execution consensus`.
+3. If it resolves but retries continue, verify the JWT secret pairing (a mismatch shows up as
+   401s from reth's auth endpoint):
+   `docker compose exec consensus sha256sum /jwt/jwt.hex` and
+   `docker compose exec execution sha256sum /jwt/jwt.hex` must agree.
+4. Running execution outside the stack (host, Kubernetes, remote)? Set `ENGINE_API_URL` per
+   [Execution Engine URL](#execution-engine-url) instead of relying on Docker DNS.
 
 ## Running a Validator
 
@@ -269,7 +337,8 @@ Monitor your node's health:
 - Consensus API (Docker network only): `http://<network>-consensus:35070`. Compose does not publish
   this port to the host.
 - Metrics (Docker network only): `http://<network>-execution:9001/metrics` and
-  `http://<network>-consensus:9001/metrics`. Prometheus scrapes these internal endpoints.
+  `http://<network>-consensus:9001/metrics`. Prometheus scrapes these internal endpoints by their
+  stable network aliases, so renaming the containers does not break the scrapes.
 
 ## Performance
 
