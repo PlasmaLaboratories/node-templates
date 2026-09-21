@@ -169,10 +169,11 @@ ENGINE_API_URL="http://host.docker.internal:8551"
 ```
 
 When set, consensus passes it to `plasma-cli` as `--engine-api-url`, which overrides the TOML's
-`engine_api_url`; when unset or empty the TOML value applies unchanged. The override is logged at
-startup. Reth must listen on an interface reachable from the consensus container
-(`--authrpc.addr 0.0.0.0` is the compose default) and both sides must share the same JWT secret;
-the compose-managed `jwt-secret` volume only covers the in-stack case.
+`engine_api_url`; when unset or empty the TOML value applies unchanged. The override is announced
+at startup with a one-line INFO; the URL value itself is never logged, since it may carry
+credentials (userinfo, path, query). Reth must listen on an interface reachable from the
+consensus container (`--authrpc.addr 0.0.0.0` is the compose default) and both sides must share
+the same JWT secret; the compose-managed `jwt-secret` volume only covers the in-stack case.
 
 After changing addressing, the alias, or the override, run `scripts/regression.sh`. It renders
 `docker compose config` for each network and exercises the consensus entrypoint with a stubbed

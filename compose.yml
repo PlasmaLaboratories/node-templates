@@ -238,10 +238,11 @@ services:
         # environment via config/${NETWORK}/.env or config/${NETWORK}/.env.secret).
         # When set it is passed to plasma-cli as --engine-api-url, which takes
         # precedence over the TOML's engine_api_url. When unset or empty, the TOML
-        # value applies unchanged.
+        # value applies unchanged. The value is never logged: it may contain
+        # credentials (userinfo, path, query).
         engine_args=()
         if [ -n "$${ENGINE_API_URL:-}" ]; then
-          echo "INFO ENGINE_API_URL is set; overriding TOML engine_api_url with $$ENGINE_API_URL" >&2
+          echo "INFO ENGINE_API_URL is set; overriding TOML engine_api_url" >&2
           engine_args+=(--engine-api-url "$$ENGINE_API_URL")
         fi
         plasma-cli "$$role" \

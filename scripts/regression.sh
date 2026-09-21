@@ -9,7 +9,9 @@ set -euo pipefail
 #      monitoring/prometheus.yml scrape targets.
 #   2. Alias stability across container renames (rendered with a container_name override).
 #   3. Consensus entrypoint behavior: ENGINE_API_URL is passed to plasma-cli as
-#      --engine-api-url only when set; when unset the TOML default applies (no flag).
+#      --engine-api-url only when set; when unset the TOML default applies (no flag),
+#      runtime logging announces the override without ever echoing the URL value
+#      (checked against a synthetic credential-bearing URL).
 #
 # Static/behavioral only: renders `docker compose config` and runs the consensus entrypoint
 # script with a stubbed plasma-cli. No containers are started and no state is modified.
@@ -135,6 +137,9 @@ PY
   [ $? -eq 0 ] || failures=$((failures + 1))
 
   # 3. Entrypoint behavior with a stubbed plasma-cli (default / observer+override / validator+override).
+  # The stub echoes plasma-cli's argv on stdout; the entrypoint's own runtime logging goes to
+  # stderr. Both streams are captured separately so an argv assertion can never be confused with
+  # runtime log content, and vice versa.
   python3 - "$json" "$tmp/entrypoint.sh" <<'PY'
 import json, sys
 cmd = json.load(open(sys.argv[1]))["services"]["consensus"]["command"][0]
@@ -145,9 +150,17 @@ PY
   printf '#!/usr/bin/env bash\nline=""\nfor a in "$@"; do line+=" $a"; done\necho "$line"\n' >"$tmp/bin/plasma-cli"
   chmod +x "$tmp/bin/plasma-cli"
 
-  run_ep() { env -i PATH="$tmp/bin:/usr/bin:/bin" HOME=/nonexistent NODE_ROLE="$1" ENGINE_API_URL="${2-}" bash "$tmp/entrypoint.sh"; }
+  ep() { # ep <role> <ENGINE_API_URL> -> stub argv echo on stdout; runtime logging on stderr file
+    env -i PATH="$tmp/bin:/usr/bin:/bin" HOME=/nonexistent NODE_ROLE="$1" ENGINE_API_URL="$2" \
+      bash "$tmp/entrypoint.sh" 2>"$tmp/runtime-stderr.log"
+  }
+  stderr_log="$tmp/runtime-stderr.log"
 
-  out="$(run_ep observer 2>&1)" || fail "$net: entrypoint (observer, default) exited non-zero"
+  # Synthetic credential-bearing URL: each secret component doubles as a leak sentinel.
+  cred_url="http://engineuser:enginepass@override.example:8551/secretpath?qtoken=secretq#secretfrag"
+
+  # 3a. Default: no override flag, and no override log line.
+  out="$(ep observer "")" || fail "$net: entrypoint (observer, default) exited non-zero"
   grep -q -- "--config-path /tmp/non-validator.toml" <<<"$out" \
     && pass "$net: observer default uses non-validator.toml" \
     || fail "$net: observer default missing --config-path /tmp/non-validator.toml"
@@ -156,22 +169,34 @@ PY
   else
     pass "$net: observer default passes no --engine-api-url"
   fi
-
-  out="$(run_ep observer "http://override:8551" 2>&1)" || fail "$net: entrypoint (observer, override) exited non-zero"
-  grep -q "overriding TOML engine_api_url with http://override:8551" <<<"$out" \
-    && pass "$net: override is logged, not silent" \
-    || fail "$net: override applied without an INFO log line"
-  if grep -q -- "--engine-api-url http://override:8551" <<<"$out"; then
-    pass "$net: ENGINE_API_URL override reaches plasma-cli"
+  if grep -q "overriding TOML engine_api_url" "$stderr_log"; then
+    fail "$net: override logged although ENGINE_API_URL is unset"
   else
-    fail "$net: ENGINE_API_URL override not passed to plasma-cli"
+    pass "$net: no override log line when ENGINE_API_URL is unset"
   fi
 
-  out="$(run_ep validator "http://override:8551" 2>&1)" || fail "$net: entrypoint (validator, override) exited non-zero"
+  # 3b. Observer + credential-bearing override: exact URL in argv, nothing secret in runtime logs.
+  out="$(ep observer "$cred_url")" || fail "$net: entrypoint (observer, override) exited non-zero"
+  grep -qF -- "--engine-api-url $cred_url" <<<"$out" \
+    && pass "$net: exact ENGINE_API_URL (credentials included) reaches plasma-cli argv" \
+    || fail "$net: ENGINE_API_URL override not passed to plasma-cli verbatim"
+  grep -q "ENGINE_API_URL is set; overriding TOML engine_api_url" "$stderr_log" \
+    && pass "$net: override announced at runtime (generic INFO, no value)" \
+    || fail "$net: override applied without a runtime INFO line"
+  leaked=""
+  for sentinel in engineuser enginepass secretpath secretq secretfrag; do
+    grep -q "$sentinel" "$stderr_log" && leaked+=" $sentinel"
+  done
+  [ -z "$leaked" ] \
+    && pass "$net: runtime logging carries no URL userinfo/path/query/fragment" \
+    || fail "$net: runtime logging leaks URL secrets:$leaked"
+
+  # 3c. Validator role: role args intact, override still forwarded verbatim.
+  out="$(ep validator "http://override:8551")" || fail "$net: entrypoint (validator, override) exited non-zero"
   grep -q -- "--vote-fanout one" <<<"$out" \
     && pass "$net: validator role keeps --vote-fanout one" \
     || fail "$net: validator role lost --vote-fanout one"
-  grep -q -- "--engine-api-url http://override:8551" <<<"$out" \
+  grep -qF -- "--engine-api-url http://override:8551" <<<"$out" \
     && pass "$net: validator role honors ENGINE_API_URL override" \
     || fail "$net: validator role lost ENGINE_API_URL override"
   grep -q -- "--config-path /tmp/validator.toml" <<<"$out" \
