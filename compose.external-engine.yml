@@ -1,0 +1,33 @@
+# External execution engine mode.
+#
+# Use when the execution (reth) node runs outside this compose stack — on the bare-metal host,
+# in Kubernetes, or on a remote machine — and consensus should connect to it via ENGINE_API_URL
+# (see README, "Execution Engine URL"):
+#
+#   export COMPOSE_FILE=compose.yml:compose.external-engine.yml
+#   docker compose up -d
+#
+# The override marks the local execution services with the `external-engine` profile, so a plain
+# `docker compose up` skips them, and relaxes consensus's `depends_on` so the disabled local
+# execution is a warning instead of an error. initialize-openssl and initialize-consensus still
+# run: consensus needs the generated JWT secret and, on first start, its database.
+#
+# Requirements and caveats:
+#   - ENGINE_API_URL must be set (config/<network>/.env or .env.secret); the override marks
+#     consensus with EXTERNAL_ENGINE=1 so the entrypoint fails fast with a clear error when
+#     it is missing, instead of retrying against the skipped local execution hostname.
+#   - The Prometheus `<network>-execution` target shows as down in this mode.
+#   - Unset COMPOSE_FILE (or drop the override) to return to the default all-in-one stack.
+services:
+  execution:
+    profiles: [external-engine]
+  initialize-execution:
+    profiles: [external-engine]
+  consensus:
+    environment:
+      # Mode marker consumed by the consensus entrypoint (fail-fast without ENGINE_API_URL).
+      EXTERNAL_ENGINE: "1"
+    depends_on:
+      execution:
+        condition: service_healthy
+        required: false

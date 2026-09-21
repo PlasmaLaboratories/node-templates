@@ -92,7 +92,9 @@ Upgrades recreate containers. The consensus configs address execution by the net
 `container_name`; do not remove that alias when overriding the compose file. If execution runs
 outside the stack (host, Kubernetes, remote), set `ENGINE_API_URL` in `config/<network>/.env` or
 `config/<network>/.env.secret` — it is passed to `plasma-cli` as `--engine-api-url` and overrides
-the TOML's `engine_api_url`. See [Execution Engine URL](README.md#execution-engine-url).
+the TOML's `engine_api_url` — and select the consensus-only stack with
+`COMPOSE_FILE=compose.yml:compose.external-engine.yml` so the local execution services are
+skipped. See [Execution Engine URL](README.md#execution-engine-url).
 
 ## Errors
 

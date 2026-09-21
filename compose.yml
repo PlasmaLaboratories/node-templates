@@ -234,6 +234,14 @@ services:
           role=observer
           config_file=non-validator
         fi
+        # External execution engine mode (compose.external-engine.yml sets EXTERNAL_ENGINE=1):
+        # the TOML engine_api_url points at the skipped local execution service, so require an
+        # explicit ENGINE_API_URL and fail fast instead of retrying against an unreachable
+        # default forever. The message is fixed text; no URL value is ever logged.
+        if [ "$${EXTERNAL_ENGINE:-}" = "1" ] && [ -z "$${ENGINE_API_URL:-}" ]; then
+          echo "ERROR EXTERNAL_ENGINE is set but ENGINE_API_URL is empty; refusing to start" >&2
+          exit 1
+        fi
         # Optional Engine API URL override (ENGINE_API_URL, set in the container
         # environment via config/${NETWORK}/.env or config/${NETWORK}/.env.secret).
         # When set it is passed to plasma-cli as --engine-api-url, which takes

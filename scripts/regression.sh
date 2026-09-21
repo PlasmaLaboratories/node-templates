@@ -12,6 +12,9 @@ set -euo pipefail
 #      --engine-api-url only when set; when unset the TOML default applies (no flag),
 #      runtime logging announces the override without ever echoing the URL value
 #      (checked against a synthetic credential-bearing URL).
+#   4. External execution engine mode (compose.external-engine.yml): local execution
+#      services leave the model, consensus's dependency on them becomes optional, and
+#      the default all-in-one render keeps its hard health gate.
 #
 # Static/behavioral only: renders `docker compose config` and runs the consensus entrypoint
 # script with a stubbed plasma-cli. No containers are started and no state is modified.
@@ -262,9 +265,97 @@ STUB
   argv_pair --config-path /tmp/validator.toml \
     && pass "$net: validator role uses validator.toml" \
     || fail "$net: validator role missing --config-path /tmp/validator.toml"
+
+  # 3d. External-engine fail-fast: EXTERNAL_ENGINE=1 with no ENGINE_API_URL must exit non-zero
+  #     before invoking plasma-cli, with a clear generic ERROR line (no URL value involved).
+  : >"$argv_log"
+  if env -i PATH="$tmp/bin:/usr/bin:/bin" HOME=/nonexistent NODE_ROLE=observer EXTERNAL_ENGINE=1 ENGINE_API_URL= \
+      PLASMA_CLI_ARGV_FILE="$argv_log" \
+      bash "$tmp/entrypoint.sh" >"$stdout_log" 2>"$stderr_log"; then
+    fail "$net: external mode without ENGINE_API_URL did not fail fast"
+  else
+    pass "$net: external mode without ENGINE_API_URL fails fast"
+  fi
+  if [ -s "$argv_log" ]; then
+    fail "$net: external fail-fast still invoked plasma-cli"
+  else
+    pass "$net: external fail-fast happens before any plasma-cli call"
+  fi
+  grep -q "ERROR EXTERNAL_ENGINE is set but ENGINE_API_URL is empty" "$stderr_log" \
+    && pass "$net: fail-fast reason logged (generic, no URL value)" \
+    || fail "$net: fail-fast missing the clear ERROR log line"
+
+  # 3e. External-engine mode with ENGINE_API_URL set: starts normally with the override.
+  : >"$argv_log"
+  env -i PATH="$tmp/bin:/usr/bin:/bin" HOME=/nonexistent NODE_ROLE=observer \
+    ENGINE_API_URL="http://external:8551" EXTERNAL_ENGINE=1 PLASMA_CLI_ARGV_FILE="$argv_log" \
+    bash "$tmp/entrypoint.sh" >"$stdout_log" 2>"$stderr_log" \
+    || fail "$net: external mode with ENGINE_API_URL exited non-zero"
+  argv_pair --engine-api-url http://external:8551 \
+    && pass "$net: external mode forwards ENGINE_API_URL normally" \
+    || fail "$net: external mode did not forward ENGINE_API_URL"
+
+  # 4. External execution engine mode: local execution services leave the model, consensus's
+  #    dependency on them becomes optional, and consensus itself is unchanged. The default
+  #    render must keep its hard health gate and no profiles.
+  render "$net" "$root/compose.external-engine.yml" >"$tmp/$net-external.json" \
+    || { fail "$net: external-mode render failed: $(render_error)"; continue; }
+  python3 - "$tmp/$net-external.json" "$tmp/$net.json" "$net" <<'PY' || failures=$((failures + 1))
+import json, sys
+
+ext, default, net = json.load(open(sys.argv[1])), json.load(open(sys.argv[2])), sys.argv[3]
+errors = []
+
+def check(cond, msg):
+    if not cond:
+        errors.append(msg)
+
+svc = ext["services"]
+check("execution" not in svc and "initialize-execution" not in svc,
+      f"external model still contains local execution services: {sorted(svc)}")
+check({"consensus", "initialize-consensus", "initialize-openssl"} <= set(svc),
+      f"external model missing the consensus chain: {sorted(svc)}")
+dep = svc["consensus"]["depends_on"]["execution"]
+check(dep.get("required") is False and dep.get("condition") == "service_healthy",
+      f"external consensus depends_on execution not relaxed: {dep}")
+check(svc["consensus"]["depends_on"]["initialize-consensus"].get("condition")
+      == "service_completed_successfully",
+      "external mode lost the initialize-consensus dependency")
+check(svc["consensus"]["networks"]["plasma"]["aliases"] == [f"{net}-consensus"],
+      "external mode lost the consensus alias")
+check("engine_args+=(--engine-api-url" in svc["consensus"]["command"][0],
+      "external mode lost ENGINE_API_URL forwarding")
+check((svc["consensus"].get("environment") or {}).get("EXTERNAL_ENGINE") == "1",
+      "external mode missing the EXTERNAL_ENGINE marker")
+
+# Initialization/JWT chain must survive: initialize-openssl generates the JWT secret into the
+# shared jwt-secret volume; consensus reads it from the same volume. Rendered volumes are
+# objects, so compare on the mount target.
+def vol_targets(service):
+    return [v.get("target", "") for v in (service.get("volumes") or []) if isinstance(v, dict)]
+
+check("/jwt" in vol_targets(svc.get("initialize-openssl") or {}),
+      "external mode lost the jwt-secret mount on initialize-openssl")
+check("/jwt" in vol_targets(svc["consensus"]),
+      "external mode lost the jwt-secret mount on consensus")
+check((svc["initialize-consensus"].get("depends_on") or {}).get("initialize-openssl", {}).get("condition")
+      == "service_completed_successfully",
+      "external mode lost the openssl -> consensus ordering")
+
+ddep = default["services"]["consensus"]["depends_on"]["execution"]
+check(ddep.get("required", True) is True and ddep.get("condition") == "service_healthy",
+      f"default consensus depends_on execution changed: {ddep}")
+check((default["services"]["execution"].get("profiles") or []) == [],
+      "default mode gained profiles on execution")
+if errors:
+    for e in errors:
+        print(f"FAIL: {net}: {e}", file=sys.stderr)
+    sys.exit(1)
+print(f"PASS: {net}: external-engine mode excludes local execution; default gating unchanged")
+PY
 done
 
-# 4. Monitoring stack still renders.
+# 5. Monitoring stack still renders.
 docker compose -f "$root/monitoring/compose.yml" --project-directory "$root/monitoring" config >/dev/null 2>&1 \
   && pass "monitoring compose renders" || fail "monitoring compose does not render"
 

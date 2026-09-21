@@ -86,6 +86,7 @@ docker compose up -d
 
 ```
 compose.yml                   # Network-agnostic service definitions
+compose.external-engine.yml   # Optional override: consensus-only stack for an execution node outside Docker
 .env -> config/{network}/.env # Symlink created by scripts/use.sh, git ignored to survive git pulls
 monitoring/                   # Monitoring stack, compose.yml, Prometheus and Grafana resources
 scripts/                      # Scripts: use.sh, download-snapshot.sh, regression.sh
@@ -174,20 +175,43 @@ ENGINE_API_URL="http://host.docker.internal:8551"
 > there: any credential-bearing URL (userinfo, path token, query secret) belongs in the
 > git-ignored `config/<network>/.env.secret` only.
 
-The stack still defines the local execution service: `docker compose up` starts it, and consensus
-waits for it to become healthy. To run consensus against an execution node outside this stack,
-start the consensus service alone (e.g. `docker compose up -d --no-deps consensus`, after its
-database was initialized once) or use a compose override that drops the `depends_on` entry.
+The stack still defines the local execution service: plain `docker compose up` starts it, and
+consensus waits for it to become healthy. To run consensus against an execution node outside
+this stack, use the shipped override instead of ad-hoc flags:
+
+```bash
+export COMPOSE_FILE=compose.yml:compose.external-engine.yml
+docker compose up -d # starts the consensus chain only; local execution services are skipped
+```
+
+The override marks the local execution services with the `external-engine` profile and relaxes
+consensus's dependency on them. `ENGINE_API_URL` (above) is required in this mode: the consensus
+entrypoint detects the mode and fails fast with a clear error instead of retrying against the
+skipped local execution hostname. The Prometheus `<network>-execution` target shows as down.
+Unset `COMPOSE_FILE` to return to the default all-in-one stack.
 
 When set, consensus passes it to `plasma-cli` as `--engine-api-url`, which overrides the TOML's
 `engine_api_url`; when unset or empty the TOML value applies unchanged. The entrypoint announces
 the override at startup with a one-line INFO and never echoes the URL value, which may carry
-credentials (userinfo, path, query). The value is still passed as a command-line argument, so it
+credentials (userinfo, path, query); the pinned consensus `1.1.0` binary was verified at `-vvv`
+verbosity not to echo it either. The value is still passed as a command-line argument, so it
 remains visible to anything that can inspect the container's processes or metadata (`ps`,
-`docker inspect`); protect host access accordingly. Reth must listen on an interface reachable
-from the consensus container (`--authrpc.addr 0.0.0.0` is the compose default) and both sides
-must share the same JWT secret; the compose-managed `jwt-secret` volume only covers the in-stack
-case.
+`docker inspect`); protect host access accordingly. If even that is unacceptable, set
+`engine_api_url` directly in a private TOML mounted via a compose override and leave
+`ENGINE_API_URL` unset — the value then never appears in process arguments. The template TOMLs
+are git-tracked, so the same secret-placement warning applies. Reth must listen on an interface
+reachable from the consensus container (`--authrpc.addr 0.0.0.0` is the compose default) and
+both sides must share the same JWT secret: the compose-managed `jwt-secret` volume covers the
+in-stack case, while in external-engine mode the external reth must be given the same secret —
+copy the generated one out of the volume or provision your own before first start:
+
+```bash
+docker run --rm -v mainnet_jwt-secret:/jwt:ro alpine cat /jwt/jwt.hex
+```
+
+The external reth also needs the network genesis (`reth init` with
+`config/<network>/genesis.json`) or a snapshot import, as described in
+[Database Snapshots (optional)](#database-snapshots-optional).
 
 After changing addressing, the alias, or the override, run `scripts/regression.sh`. It renders
 `docker compose config` for each network and exercises the consensus entrypoint with a stubbed
