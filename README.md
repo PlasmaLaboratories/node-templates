@@ -154,7 +154,8 @@ network (`networks.plasma.aliases`), not the container name:
   service aliases are the addressing contract.
 - Run one stack per network per host. Two stacks of the same network share the `plasma` network
   and would publish the same alias, making DNS ambiguous. To run a second stack of the same
-  network, isolate it on its own Docker network and set `ENGINE_API_URL` (below).
+  network, isolate it on its own Docker network (a compose override that replaces the external
+  `plasma` network definition, which `compose.yml` pins) and set `ENGINE_API_URL` (below).
 
 Both services mount the same `jwt-secret` volume: consensus reads `authrpc_jwtsecret
 = "/jwt/jwt.hex"` from the TOML and execution starts reth with `--authrpc.jwtsecret /jwt/jwt.hex`.
@@ -162,22 +163,35 @@ The pairing must match; a renamed container does not affect this shared secret.
 
 The compose files target Docker. When execution runs outside the stack — bare-metal host,
 Kubernetes, or a remote machine — point consensus at it with `ENGINE_API_URL` in
-`config/<network>/.env` (team-wide) or `config/<network>/.env.secret` (per-host, git-ignored):
+`config/<network>/.env.secret` (per-host, git-ignored), or in `config/<network>/.env` for a
+non-secret, team-wide default:
 
 ```dotenv
 ENGINE_API_URL="http://host.docker.internal:8551"
 ```
 
+> :warning: `config/<network>/.env` is committed to this repository. Never put credentials
+> there: any credential-bearing URL (userinfo, path token, query secret) belongs in the
+> git-ignored `config/<network>/.env.secret` only.
+
+The stack still defines the local execution service: `docker compose up` starts it, and consensus
+waits for it to become healthy. To run consensus against an execution node outside this stack,
+start the consensus service alone (e.g. `docker compose up -d --no-deps consensus`, after its
+database was initialized once) or use a compose override that drops the `depends_on` entry.
+
 When set, consensus passes it to `plasma-cli` as `--engine-api-url`, which overrides the TOML's
-`engine_api_url`; when unset or empty the TOML value applies unchanged. The override is announced
-at startup with a one-line INFO; the URL value itself is never logged, since it may carry
-credentials (userinfo, path, query). Reth must listen on an interface reachable from the
-consensus container (`--authrpc.addr 0.0.0.0` is the compose default) and both sides must share
-the same JWT secret; the compose-managed `jwt-secret` volume only covers the in-stack case.
+`engine_api_url`; when unset or empty the TOML value applies unchanged. The entrypoint announces
+the override at startup with a one-line INFO and never echoes the URL value, which may carry
+credentials (userinfo, path, query). The value is still passed as a command-line argument, so it
+remains visible to anything that can inspect the container's processes or metadata (`ps`,
+`docker inspect`); protect host access accordingly. Reth must listen on an interface reachable
+from the consensus container (`--authrpc.addr 0.0.0.0` is the compose default) and both sides
+must share the same JWT secret; the compose-managed `jwt-secret` volume only covers the in-stack
+case.
 
 After changing addressing, the alias, or the override, run `scripts/regression.sh`. It renders
 `docker compose config` for each network and exercises the consensus entrypoint with a stubbed
-`plasma-cli`; it requires `docker compose` and `python3`, and starts no containers.
+`plasma-cli`; it requires `docker compose` v2.24+ and `python3`, and starts no containers.
 
 ### Peer Discovery
 
