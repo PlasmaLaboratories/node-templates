@@ -337,47 +337,23 @@ docker compose up # Run a node and follow logs
 docker compose -f monitoring/compose.yml up -d # Run the monitoring stack detached
 docker compose logs -n 1000 -f # Display the 1000 most recent log entries and follow logs
 docker compose down # Stop the node
-docker compose down -v # Stop node and delete all data volumes
 ```
 
 ### Node troubleshooting
 
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for startup errors, stalled sync, failed snapshot
+imports, and recovery checks. Deployment agents should also read [AGENTS.md](AGENTS.md).
+
 #### Sync Issues
 
-Check execution client sync status:
-
-```bash
-RPC_PORT=8545 # mainnet; use 8546 for testnet or 8547 for devnet.
-curl -s -X POST -H "Content-Type: application/json" \
-  --data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}' \
-  "http://localhost:${RPC_PORT}"
-```
+See [sync checks](TROUBLESHOOTING.md#healthy-container-stalled-chain) for chain identity,
+progress samples, and finality comparisons. TCP health and `eth_syncing` alone do not establish
+that the node has reached the network head.
 
 #### Engine API unreachable (consensus startup retries)
 
-Symptom: `docker compose logs consensus` shows repeated `engine_exchangeCapabilities` retries and
-the observer/validator loop never starts, while the execution container itself looks healthy.
-
-1. Check DNS resolution and TCP connectivity from inside the consensus container:
-
-   ```bash
-   docker compose exec consensus \
-     bash -c 'exec 3<>/dev/tcp/mainnet-execution/8551' && echo reachable
-   ```
-
-   Use the hostname and port from `engine_api_url` (or `ENGINE_API_URL`). This checks TCP
-   reachability; it does not authenticate an Engine API request.
-
-2. For an in-stack engine, if the check fails, verify that execution is running and carries the alias:
-   `docker compose ps`, then
-   `docker inspect --format '{{json .NetworkSettings.Networks.plasma.Aliases}}' <container>`.
-   If existing containers lack the alias, recreate the pair to apply the Compose configuration: `docker compose up -d --force-recreate execution consensus`.
-3. If TCP connectivity succeeds but retries continue, verify the JWT secret pairing (a mismatch shows up as
-   401s from reth's auth endpoint):
-   `docker compose exec consensus sha256sum /jwt/jwt.hex` and
-   `docker compose exec execution sha256sum /jwt/jwt.hex` must agree. For an external engine, compare against its configured JWT file.
-4. Running execution outside the stack (host, Kubernetes, remote)? Set `ENGINE_API_URL` per
-   [Execution Engine URL](#execution-engine-url) instead of relying on Docker DNS.
+See [Engine API troubleshooting](TROUBLESHOOTING.md#engine-api-unreachable) for DNS, TCP,
+JWT, and external-engine checks.
 
 ## Running a Validator
 
@@ -566,9 +542,15 @@ aws s3 cp \
 
 ### Step 2: Import snapshots
 
+Keep only one matching snapshot pair in the import directory. Each initializer chooses its
+archive independently, so a directory containing several runs can select mismatched state.
+A failed extraction can leave database markers that cause a retry to skip restore; see
+[snapshot import troubleshooting](TROUBLESHOOTING.md#snapshot-import-and-reth-v2).
+
 If a snapshot exists, the compose stack imports it **automatically**. The `initialize-consensus` and
-`initialize-execution` services import the newest `*-backup-*.tar.gz` they find in
-`SNAPSHOT_DIRECTORY` before initializing the databases, on every `docker compose up`. When a node
+`initialize-execution` services select `consensus-*.tar.gz` and `execution-*.tar.gz` respectively
+from `SNAPSHOT_DIRECTORY`, taking the last filename in sorted order. They restore before
+initializing the databases on `docker compose up`. When a node
 database already exists (e.g. restarting an existing node), or when no snapshot is present in the
 `SNAPSHOT_DIRECTORY`, the import step is skipped and the node starts normally.
 
@@ -580,8 +562,10 @@ database already exists (e.g. restarting an existing node), or when no snapshot 
 
 #### Manual snapshot import (alternative)
 
-To restore by hand instead, e.g. into volumes managed outside this compose project, run the steps
-below. Note the compose project is named after the network (`name: ${NETWORK}`), so the volumes are
+Stop both clients and retain consistent backups before restoring by hand. The commands below
+replace database contents in place; use the [v2 migration guide](RETH-V2-MIGRATION.md) for an
+observer migration using new volumes. The default Compose project is named after the network
+(`name: ${NETWORK}`), so the volumes are
 `<network>_consensus-data` and `<network>_execution-data` (e.g. `mainnet_consensus-data`).
 
 Load the selected network's pinned images and use its snapshot directory:

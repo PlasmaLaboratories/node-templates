@@ -239,3 +239,5 @@ previously synced production database was not exercised.
 Intermittent legacy peer-stream errors occurred during catch-up. This test did not cover mainnet,
 testnet, validators, or sustained production load. Confirm image and snapshot compatibility for
 your deployment even when using these tested versions.
+
+For startup, connectivity, or import failures, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).

@@ -114,3 +114,5 @@ for switching an existing stack, sharing the JWT secret, and returning to local 
 
 Networks upgrade independently. After the `1.1.0` migration has run, do not downgrade that data
 volume to `0.15.0`; rollback is not a supported general compatibility path.
+
+For startup, connectivity, or import failures, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
