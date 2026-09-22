@@ -15,6 +15,12 @@ read the selected snapshot pair. The snapshot manifest identifies the network an
 version; it does not specify compatible client image digests. This guide does not select a
 production release or change the repository's image pins.
 
+The devnet `20260922-020000` v2 snapshot fails to start with the template's consensus v1.1.0:
+`failed to decode committee snapshot: missing field speculative_prefetch`. A local test with
+consensus v1.2.0 restored the same state and began processing blocks. Select compatible images
+for both clients before importing; the consensus upgrade described in [UPGRADING.md](UPGRADING.md)
+ends at v1.1.0 and does not establish compatibility with this snapshot.
+
 Validators need a separate, coordinated procedure that preserves signing safety and node
 identity. Do not restore an older consensus snapshot onto an active validator using this guide.
 
@@ -116,6 +122,10 @@ services:
     image: ${RETH_V2_IMAGE:?Set the approved Reth image tag and digest}
   initialize-execution:
     image: ${RETH_V2_IMAGE:?Set the approved Reth image tag and digest}
+  consensus:
+    image: ${MIGRATION_CONSENSUS_IMAGE:?Set the snapshot-compatible consensus image and digest}
+  initialize-consensus:
+    image: ${MIGRATION_CONSENSUS_IMAGE:?Set the snapshot-compatible consensus image and digest}
 volumes:
   execution-data:
     external: true
@@ -125,23 +135,24 @@ volumes:
     name: ${RETH_V2_CONSENSUS_VOLUME:?Set a new consensus volume name}
 ```
 
-Set `RETH_V2_IMAGE` to the full approved image reference, including `@sha256:...`. Set both
-volume-name variables to new names distinct from the running stack's volumes. Export these
-variables and `SNAPSHOT_DIRECTORY`. Keep a private record of the values for future restarts.
-If the snapshot requires a different consensus release, apply its reviewed upgrade instructions
-and pin that image for both `consensus` and `initialize-consensus` as well.
+Set `RETH_V2_IMAGE` and `MIGRATION_CONSENSUS_IMAGE` to the full approved image references,
+including `@sha256:...`. Set both volume-name variables to new names distinct from the running
+stack's volumes. Export these variables and `SNAPSHOT_DIRECTORY`. Keep a private record of the values for future restarts.
+Apply the selected consensus release's configuration upgrade instructions. The override pins
+each client's initializer and runtime service to the same image.
 
 ```bash
 export MIGRATION_OVERRIDE="$HOME/.config/plasma/reth-v2.yml"
 dc_v2() { docker compose -f compose.yml -f "$MIGRATION_OVERRIDE" "$@"; }
 dc_v2 config --quiet
 dc_v2 config --images
-dc_v2 pull execution initialize-execution
+dc_v2 pull execution initialize-execution consensus initialize-consensus
 ```
 
-Review the rendered mounts locally. Confirm both execution services use the approved image,
-both database mounts point to the new volumes, and the JWT volume is unchanged. Check the
-approved binaries' supported CLI flags against `compose.yml` before stopping the old node.
+Review the rendered mounts locally. Confirm both client image pins apply to their initializers
+and runtime services. Confirm both database mounts point to the new volumes and the JWT volume
+is unchanged. Check the approved binaries' supported CLI flags against `compose.yml` before
+stopping the old node.
 Do not publish rendered configuration containing secrets.
 
 ## Stop, import, and start
@@ -201,3 +212,27 @@ Keep both old databases until the new pair has passed the operational checks. Do
 `docker compose down -v`; it can delete volumes needed for recovery. If the old database pair
 can no longer catch up after the downtime, obtain a compatible recovery snapshot and coordinate
 recovery with the Plasma team.
+
+## Local devnet rehearsal (22 September 2026)
+
+A Docker rehearsal on linux/arm64 restored the devnet `20260922-020000` snapshot pair and reached
+the live head with these image pins:
+
+| Client | Tested image |
+| --- | --- |
+| Reth v2.0.0 | `ghcr.io/paradigmxyz/reth@sha256:9f3ba7428b29d9bcf5575826a886ec1a19a3b61d661bf9526a6260cb8b821808` |
+| Consensus v1.2.0 | `ghcr.io/plasmalaboratories/plasma-consensus-public@sha256:1044b47600bb63ffd584bf9289c6b15de7ed5ec769bab05473a5957a1756d765` |
+
+Both archive checksums matched and both initializers completed. Reth reported `storage_v2: true`.
+Engine authentication rejected a missing JWT and accepted the shared secret. The observer reached
+block 6,955,169; two samples 20 seconds apart had advancing heads within one second of wall-clock
+time and matching finalized execution hashes between consensus and reth. A live container rename
+also preserved Engine access through the stable alias.
+
+The old v1 database files remained unchanged. Reth v1.11.3 restarted successfully on those volumes
+after the v2 stack stopped. The v1 baseline was generated at genesis for the test; rollback of a
+previously synced production database was not exercised.
+
+Intermittent legacy peer-stream errors occurred during catch-up. This test did not cover mainnet,
+testnet, validators, or sustained production load. Confirm image and snapshot compatibility for
+your deployment even when using these tested versions.
