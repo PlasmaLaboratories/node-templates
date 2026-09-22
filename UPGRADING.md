@@ -69,8 +69,7 @@ Once nothing references `/node/keys/*` or `/node/identities/*`, those directorie
 
 The `1.1.0` node can open and migrate the `0.15.0` consensus database in place. Make or retain a
 backup before upgrading, stop the selected network, and keep its named data volumes and generated
-secrets. Do not use `docker compose down -v`: it removes the execution database, consensus database,
-and generated secrets.
+secrets. Do not use `docker compose down -v`; it deletes both databases and the generated secrets.
 
 On the first `1.1.0` start, the node migrates legacy consensus state into the current checkpoint
 format. If the consensus volume is intentionally empty or has no usable database, the initializer
@@ -87,14 +86,14 @@ docker compose logs initialize-consensus   # exit 0; migration or initialization
 
 ## Container names and the Engine API URL
 
-Upgrades recreate containers. The consensus configs address execution by the network alias
-`<network>-execution`, registered by `compose.yml` (`networks.plasma.aliases`) independently of
-`container_name`; do not remove that alias when overriding the compose file. If execution runs
-outside the stack (host, Kubernetes, remote), set `ENGINE_API_URL` in `config/<network>/.env` or
-`config/<network>/.env.secret` — it is passed to `plasma-cli` as `--engine-api-url` and overrides
-the TOML's `engine_api_url` — and select the consensus-only stack with
-`COMPOSE_FILE=compose.yml:compose.external-engine.yml` so the local execution services are
-skipped. See [Execution Engine URL](README.md#execution-engine-url).
+The consensus configs address execution by the `<network>-execution` DNS alias. `compose.yml`
+registers this alias independently of `container_name`; preserve it in Compose overrides.
+Recreate existing containers to apply the alias configuration.
+
+For execution outside the stack, set `ENGINE_API_URL` in the git-ignored
+`config/<network>/.env.secret` and select `compose.external-engine.yml`. This skips local execution
+startup and requires an explicit URL. See [Execution Engine URL](README.md#execution-engine-url)
+for switching an existing stack, sharing the JWT secret, and returning to local execution.
 
 ## Errors
 

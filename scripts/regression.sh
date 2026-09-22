@@ -6,7 +6,7 @@ set -euo pipefail
 # Covers:
 #   1. Stable per-network aliases (<network>-execution / <network>-consensus) on the shared
 #      `plasma` network, matching the hosts used by the TOML engine_api_url and the
-#      monitoring/prometheus.yml scrape targets.
+#      monitoring/prometheus/prometheus.yml scrape targets.
 #   2. Alias stability across container renames (rendered with a container_name override).
 #   3. Consensus entrypoint behavior: ENGINE_API_URL is passed to plasma-cli as
 #      --engine-api-url only when set; when unset the TOML default applies (no flag),
@@ -17,7 +17,8 @@ set -euo pipefail
 #      the default all-in-one render keeps its hard health gate.
 #
 # Static/behavioral only: renders `docker compose config` and runs the consensus entrypoint
-# script with a stubbed plasma-cli. No containers are started and no state is modified.
+# script with a stubbed plasma-cli in a temporary fixture. No containers are started;
+# the checkout's .env.secret files are neither read nor written.
 #
 # Requires: docker compose v2.24+ (compose.yml uses the long env_file syntax), python3.
 #
@@ -36,12 +37,24 @@ for arg in "$@"; do
   esac
 done
 
-root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 networks=("$@")
 [ ${#networks[@]} -eq 0 ] && networks=(mainnet testnet devnet)
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+
+# Copy only the inputs needed to render Compose. Keep secret-file probes outside
+# the checkout, including on interruption, and exclude operator secrets/snapshots.
+root="$tmp/fixture"
+mkdir -p "$root/monitoring/prometheus"
+cp "$source_root/compose.yml" "$source_root/compose.external-engine.yml" "$root/"
+cp "$source_root/monitoring/compose.yml" "$root/monitoring/"
+cp "$source_root/monitoring/prometheus/prometheus.yml" "$root/monitoring/prometheus/"
+for net in "${networks[@]}"; do
+  mkdir -p "$root/config/$net"
+  cp "$source_root/config/$net/.env" "$source_root/config/$net/"*.toml "$root/config/$net/"
+done
 
 failures=0
 pass() { echo "PASS: $*"; }
@@ -51,7 +64,7 @@ render() { # render <network> [extra compose file] -> JSON on stdout; stderr kep
   local net="$1" extra="${2:-}"
   local -a args=(-f "$root/compose.yml" --project-directory "$root" --env-file "$root/config/$net/.env")
   [ -n "$extra" ] && args+=(-f "$extra")
-  docker compose "${args[@]}" config --format json 2>"$tmp/render-stderr.log"
+  env -i PATH="$PATH" HOME="$HOME" docker compose "${args[@]}" config --format json 2>"$tmp/render-stderr.log"
 }
 render_error() { head -n 1 "$tmp/render-stderr.log" 2>/dev/null || true; }
 
@@ -115,32 +128,35 @@ if errors:
 print(f"PASS: {net}: aliases, container names, TOML coupling, prometheus targets, override guard")
 PY
 
-  # 1b. env_file plumbing for the optional .env.secret: a marker ENGINE_API_URL in the
-  #     git-ignored config/<net>/.env.secret must surface in the rendered consensus
-  #     environment (env_file, not interpolation, is the delivery path). Skipped when a
-  #     real .env.secret exists so user files are never touched.
+  # 1b. A fixture .env.secret must override the base .env inside the container.
+  printf '\nENGINE_API_URL=http://base-probe:8551\n' >>"$root/config/$net/.env"
+  render "$net" >"$tmp/$net-base-envprobe.json" || { fail "$net: base env_file probe failed: $(render_error)"; continue; }
+  python3 - "$tmp/$net-base-envprobe.json" "$net" <<'PY' || failures=$((failures + 1))
+import json, sys
+co = json.load(open(sys.argv[1]))["services"]["consensus"]
+if co["environment"].get("ENGINE_API_URL") != "http://base-probe:8551":
+    sys.exit(f"FAIL: {sys.argv[2]}: base .env ENGINE_API_URL not delivered")
+print(f"PASS: {sys.argv[2]}: ENGINE_API_URL from base .env reaches consensus")
+PY
   secret_env="$root/config/$net/.env.secret"
-  if [ -f "$secret_env" ]; then
-    echo "SKIP: $net: .env.secret exists; env_file probe skipped (user file untouched)"
-  else
-    printf 'ENGINE_API_URL=http://plumbing-probe:8551\n' >"$secret_env"
-    if render "$net" >"$tmp/$net-envprobe.json"; then
-      python3 - "$tmp/$net-envprobe.json" "$net" <<'PY' || failures=$((failures + 1))
+  printf 'ENGINE_API_URL=http://plumbing-probe:8551\n' >"$secret_env"
+  if render "$net" >"$tmp/$net-envprobe.json"; then
+    python3 - "$tmp/$net-envprobe.json" "$net" <<'PY' || failures=$((failures + 1))
 import json, sys
 
 co, net = json.load(open(sys.argv[1]))["services"]["consensus"], sys.argv[2]
 value = (co.get("environment") or {}).get("ENGINE_API_URL")
 if value == "http://plumbing-probe:8551":
-    print(f"PASS: {net}: ENGINE_API_URL from .env.secret reaches the consensus environment")
+    print(f"PASS: {net}: .env.secret ENGINE_API_URL overrides the base .env")
 else:
     print(f"FAIL: {net}: .env.secret ENGINE_API_URL not in consensus environment: {value!r}", file=sys.stderr)
     sys.exit(1)
 PY
-    else
-      fail "$net: env_file probe render failed: $(render_error)"
-    fi
-    rm -f "$secret_env"
+  else
+    fail "$net: env_file probe render failed: $(render_error)"
   fi
+  rm -f "$secret_env"
+  cp "$source_root/config/$net/.env" "$root/config/$net/.env"
 
   # 2. Renamed-container simulation: aliases survive a container_name override.
   override="$tmp/rename-$net.yml"
@@ -218,7 +234,7 @@ STUB
   leak_scan() { # leak_scan <context>: fail if any sentinel reaches the runtime stdout/stderr logs
     local context="$1" leaked=""
     for sentinel in "${sentinels[@]}"; do
-      if grep -q "$sentinel" "$stdout_log" "$stderr_log" 2>/dev/null; then
+      if grep -qF "$sentinel" "$stdout_log" "$stderr_log" 2>/dev/null; then
         leaked+=" $sentinel"
       fi
     done
@@ -227,7 +243,7 @@ STUB
       || fail "$net: $context: runtime logging leaks URL secrets:$leaked"
   }
 
-  # 3a. Default: no override flag, and no override log line.
+  # 3a. Empty override: no override flag or log line.
   ep observer "" || fail "$net: entrypoint (observer, default) exited non-zero"
   argv_pair --config-path /tmp/non-validator.toml \
     && pass "$net: observer default uses non-validator.toml" \
@@ -238,9 +254,23 @@ STUB
     pass "$net: observer default passes no --engine-api-url"
   fi
   if grep -q "overriding TOML engine_api_url" "$stdout_log" "$stderr_log" 2>/dev/null; then
-    fail "$net: override logged although ENGINE_API_URL is unset"
+    fail "$net: override logged although ENGINE_API_URL is empty"
   else
-    pass "$net: no override log line when ENGINE_API_URL is unset"
+    pass "$net: no override log line when ENGINE_API_URL is empty"
+  fi
+
+  # The variable can also be absent from the container environment entirely.
+  : >"$argv_log"
+  env -i PATH="$tmp/bin:/usr/bin:/bin" HOME=/nonexistent NODE_ROLE=observer \
+    PLASMA_CLI_ARGV_FILE="$argv_log" \
+    bash "$tmp/entrypoint.sh" >"$stdout_log" 2>"$stderr_log" \
+    || fail "$net: entrypoint with unset ENGINE_API_URL exited non-zero"
+  if argv_pair --config-path /tmp/non-validator.toml \
+      && ! grep -qxF -- "--engine-api-url" "$argv_log" \
+      && ! grep -q "overriding TOML engine_api_url" "$stdout_log" "$stderr_log"; then
+    pass "$net: unset ENGINE_API_URL preserves TOML selection without override logging"
+  else
+    fail "$net: unset ENGINE_API_URL changed default startup"
   fi
 
   # 3b. Observer + credential-bearing override: exact URL as one argv element, nothing secret
@@ -329,15 +359,12 @@ check((svc["consensus"].get("environment") or {}).get("EXTERNAL_ENGINE") == "1",
       "external mode missing the EXTERNAL_ENGINE marker")
 
 # Initialization/JWT chain must survive: initialize-openssl generates the JWT secret into the
-# shared jwt-secret volume; consensus reads it from the same volume. Rendered volumes are
-# objects, so compare on the mount target.
-def vol_targets(service):
-    return [v.get("target", "") for v in (service.get("volumes") or []) if isinstance(v, dict)]
-
-check("/jwt" in vol_targets(svc.get("initialize-openssl") or {}),
-      "external mode lost the jwt-secret mount on initialize-openssl")
-check("/jwt" in vol_targets(svc["consensus"]),
-      "external mode lost the jwt-secret mount on consensus")
+# shared jwt-secret volume; consensus must read that same source at /jwt.
+for name in ("initialize-openssl", "consensus"):
+    mounts = [v for v in svc[name].get("volumes", []) if v.get("target") == "/jwt"]
+    check(len(mounts) == 1 and mounts[0].get("type") == "volume"
+          and mounts[0].get("source") == "jwt-secret",
+          f"external mode lost the shared jwt-secret volume on {name}")
 check((svc["initialize-consensus"].get("depends_on") or {}).get("initialize-openssl", {}).get("condition")
       == "service_completed_successfully",
       "external mode lost the openssl -> consensus ordering")
@@ -347,6 +374,8 @@ check(ddep.get("required", True) is True and ddep.get("condition") == "service_h
       f"default consensus depends_on execution changed: {ddep}")
 check((default["services"]["execution"].get("profiles") or []) == [],
       "default mode gained profiles on execution")
+check((default["services"]["initialize-execution"].get("profiles") or []) == [],
+      "default mode gained profiles on initialize-execution")
 if errors:
     for e in errors:
         print(f"FAIL: {net}: {e}", file=sys.stderr)

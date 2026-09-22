@@ -209,12 +209,8 @@ services:
         condition: service_completed_successfully
     networks:
       plasma:
-        # Stable per-network DNS name on the shared bridge network, independent of
-        # container_name. The consensus configs' engine_api_url and the Prometheus
-        # scrape targets in monitoring/prometheus.yml address the execution node by
-        # this hostname, so a renamed container keeps working. Requires one stack
-        # per network per Docker host: two stacks of the same network on the shared
-        # `plasma` network would publish the same alias and make DNS ambiguous.
+        # Matches engine_api_url and Prometheus targets, independent of container_name.
+        # Use one stack per network on the shared plasma bridge to avoid alias collisions.
         aliases:
           - "${NETWORK}-execution"
 
@@ -234,20 +230,13 @@ services:
           role=observer
           config_file=non-validator
         fi
-        # External execution engine mode (compose.external-engine.yml sets EXTERNAL_ENGINE=1):
-        # the TOML engine_api_url points at the skipped local execution service, so require an
-        # explicit ENGINE_API_URL and fail fast instead of retrying against an unreachable
-        # default forever. The message is fixed text; no URL value is ever logged.
+        # The external-engine override skips local execution; require an explicit URL.
         if [ "$${EXTERNAL_ENGINE:-}" = "1" ] && [ -z "$${ENGINE_API_URL:-}" ]; then
           echo "ERROR EXTERNAL_ENGINE is set but ENGINE_API_URL is empty; refusing to start" >&2
           exit 1
         fi
-        # Optional Engine API URL override (ENGINE_API_URL, set in the container
-        # environment via config/${NETWORK}/.env or config/${NETWORK}/.env.secret).
-        # When set it is passed to plasma-cli as --engine-api-url, which takes
-        # precedence over the TOML's engine_api_url. When unset or empty, the TOML
-        # value applies unchanged. The value is never logged: it may contain
-        # credentials (userinfo, path, query).
+        # env_file supplies ENGINE_API_URL. The CLI flag takes precedence over TOML.
+        # Keep the value out of entrypoint logs because URLs can contain credentials.
         engine_args=()
         if [ -n "$${ENGINE_API_URL:-}" ]; then
           echo "INFO ENGINE_API_URL is set; overriding TOML engine_api_url" >&2
@@ -287,9 +276,7 @@ services:
         condition: service_healthy
     networks:
       plasma:
-        # Same stability contract as the execution alias above: the Prometheus
-        # scrape targets in monitoring/prometheus.yml address the consensus node
-        # by this hostname, independent of container_name.
+        # Matches Prometheus targets independently of container_name.
         aliases:
           - "${NETWORK}-consensus"
 

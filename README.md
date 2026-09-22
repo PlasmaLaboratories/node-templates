@@ -69,8 +69,7 @@ docker compose up -d
 
 # Optional: Verify via docker compose (currently used network via scripts/use.sh)
 docker compose ps
-docker compose logs -f consensus
-docker compose logs -f execution
+docker compose logs -f consensus execution
 # Optional: Verify via docker
 docker ps
 docker logs -f mainnet-consensus
@@ -86,12 +85,12 @@ docker compose up -d
 
 ```
 compose.yml                   # Network-agnostic service definitions
-compose.external-engine.yml   # Optional override: consensus-only stack for an execution node outside Docker
+compose.external-engine.yml   # Optional override for execution outside this stack
 .env -> config/{network}/.env # Symlink created by scripts/use.sh, git ignored to survive git pulls
 monitoring/                   # Monitoring stack, compose.yml, Prometheus and Grafana resources
 scripts/                      # Scripts: use.sh, download-snapshot.sh, regression.sh
 config/                       # Per-network configuration and data
-└── {network}/                # Networks: devnet, testnet, mainnet
+└── {network}/                # One directory per network
     ├── .env                  # Configure network, role, images, tags, snapshots, trusted peers
     ├── non-validator.toml    # Consensus config for NODE_ROLE=observer
     ├── validator.toml        # Consensus config for NODE_ROLE=validator
@@ -143,79 +142,84 @@ Key sections:
 
 ### Execution Engine URL
 
-The consensus node reaches the execution node over the Engine API: `engine_api_url` in
-`validator.toml` / `non-validator.toml`, default `http://<network>-execution:8551`.
+Consensus reads `engine_api_url` from the role's TOML file. Its default is
+`http://<network>-execution:8551`. Compose registers `<network>-execution` and
+`<network>-consensus` as DNS aliases on the shared `plasma` network. These aliases survive
+container renames and match the targets in `monitoring/prometheus/prometheus.yml`.
+Recreating containers through this Compose configuration also attaches the aliases.
 
-That hostname is a **network alias** registered by `compose.yml` on the shared `plasma` bridge
-network (`networks.plasma.aliases`), not the container name:
+Run one stack per network per Docker host. Two stacks for the same network would publish
+identical aliases on `plasma`, making DNS ambiguous. Separate stacks require distinct Docker
+networks, project names, container names, and published ports; this template does not configure
+that layout.
 
-- Renaming or recreating the execution container keeps the `<network>-execution` alias attached,
-  so the Engine URL, the JWT-authenticated connection, and the Prometheus scrapes in
-  `monitoring/prometheus.yml` keep working. Container names are cosmetic on Docker networks;
-  service aliases are the addressing contract.
-- Run one stack per network per host. Two stacks of the same network share the `plasma` network
-  and would publish the same alias, making DNS ambiguous. To run a second stack of the same
-  network, isolate it on its own Docker network (a compose override that replaces the external
-  `plasma` network definition, which `compose.yml` pins) and set `ENGINE_API_URL` (below).
-
-Both services mount the same `jwt-secret` volume: consensus reads `authrpc_jwtsecret
-= "/jwt/jwt.hex"` from the TOML and execution starts reth with `--authrpc.jwtsecret /jwt/jwt.hex`.
-The pairing must match; a renamed container does not affect this shared secret.
-
-The compose files target Docker. When execution runs outside the stack — bare-metal host,
-Kubernetes, or a remote machine — point consensus at it with `ENGINE_API_URL` in
-`config/<network>/.env.secret` (per-host, git-ignored), or in `config/<network>/.env` for a
-non-secret, team-wide default:
+To override the TOML URL, add `ENGINE_API_URL` to `config/<network>/.env.secret`:
 
 ```dotenv
 ENGINE_API_URL="http://host.docker.internal:8551"
 ```
 
-> :warning: `config/<network>/.env` is committed to this repository. Never put credentials
-> there: any credential-bearing URL (userinfo, path token, query secret) belongs in the
-> git-ignored `config/<network>/.env.secret` only.
+`host.docker.internal` resolves to the host on Docker Desktop. On Linux, configure a reachable
+host address or a Compose `extra_hosts` mapping to `host-gateway`.
 
-The stack still defines the local execution service: plain `docker compose up` starts it, and
-consensus waits for it to become healthy. To run consensus against an execution node outside
-this stack, use the shipped override instead of ad-hoc flags:
+Compose loads the value into the consensus container through `env_file`. A value in
+`.env.secret` takes precedence over one in `config/<network>/.env`. Exporting the variable in
+the host shell alone does not pass it to this container. Compose does not substitute variables
+inside the mounted TOML files.
+
+When the value is nonempty, the entrypoint passes it as `plasma-cli --engine-api-url`, overriding
+`engine_api_url`. When it is unset or empty, the default stack uses the TOML value. The entrypoint
+logs a generic message announcing the override without printing its value. The URL remains
+visible in process arguments and container metadata, so restrict host and Docker access.
+Keep credential-bearing URLs in the git-ignored `.env.secret`; the network `.env` and TOML
+files are tracked in Git.
+
+For execution running outside this stack, select `compose.external-engine.yml`. From the
+repository root, after selecting a network with `scripts/use.sh <network>`:
 
 ```bash
 export COMPOSE_FILE=compose.yml:compose.external-engine.yml
-docker compose up -d # starts the consensus chain only; local execution services are skipped
+docker compose up -d
 ```
 
-The override marks the local execution services with the `external-engine` profile and relaxes
-consensus's dependency on them. `ENGINE_API_URL` (above) is required in this mode: the consensus
-entrypoint detects the mode and fails fast with a clear error instead of retrying against the
-skipped local execution hostname. The Prometheus `<network>-execution` target shows as down.
-Unset `COMPOSE_FILE` to return to the default all-in-one stack.
+This starts consensus and its initialization services. The local execution services are assigned
+a disabled profile and skipped. Leave `COMPOSE_PROFILES` unset and do not enable the
+`external-engine` profile. This mode requires a nonempty `ENGINE_API_URL`; the entrypoint exits
+with an error before starting `plasma-cli` if it is missing.
 
-When set, consensus passes it to `plasma-cli` as `--engine-api-url`, which overrides the TOML's
-`engine_api_url`; when unset or empty the TOML value applies unchanged. The entrypoint announces
-the override at startup with a one-line INFO and never echoes the URL value, which may carry
-credentials (userinfo, path, query); the pinned consensus `1.1.0` binary was verified at `-vvv`
-verbosity not to echo it either. The value is still passed as a command-line argument, so it
-remains visible to anything that can inspect the container's processes or metadata (`ps`,
-`docker inspect`); protect host access accordingly. If even that is unacceptable, set
-`engine_api_url` directly in a private TOML mounted via a compose override and leave
-`ENGINE_API_URL` unset — the value then never appears in process arguments. The template TOMLs
-are git-tracked, so the same secret-placement warning applies. Reth must listen on an interface
-reachable from the consensus container (`--authrpc.addr 0.0.0.0` is the compose default) and
-both sides must share the same JWT secret: the compose-managed `jwt-secret` volume covers the
-in-stack case, while in external-engine mode the external reth must be given the same secret —
-copy the generated one out of the volume or provision your own before first start:
+If switching an existing stack to external execution, first stop its local execution services
+using the base configuration:
 
 ```bash
-docker run --rm -v mainnet_jwt-secret:/jwt:ro alpine cat /jwt/jwt.hex
+docker compose -f compose.yml stop execution initialize-execution
 ```
 
-The external reth also needs the network genesis (`reth init` with
-`config/<network>/genesis.json`) or a snapshot import, as described in
-[Database Snapshots (optional)](#database-snapshots-optional).
+Selecting the override does not stop containers that are already running. The default Prometheus
+execution target will be down when local execution is stopped; configure the external engine's
+metrics target separately. To return to local execution, remove `ENGINE_API_URL` from the network
+env files, ensure the TOML points at `<network>-execution:8551`, unset `COMPOSE_FILE`, and run
+`docker compose up -d`.
 
-After changing addressing, the alias, or the override, run `scripts/regression.sh`. It renders
-`docker compose config` for each network and exercises the consensus entrypoint with a stubbed
-`plasma-cli`; it requires `docker compose` v2.24+ and `python3`, and starts no containers.
+Both nodes must use the same JWT secret. The default stack mounts `jwt-secret` at `/jwt` in both
+containers. Consensus uses `authrpc_jwtsecret = "/jwt/jwt.hex"`; reth uses
+`--authrpc.jwtsecret /jwt/jwt.hex`. For an external engine, provision a matching secret before
+starting consensus, or copy the generated secret securely to the external host. For example,
+after `initialize-openssl` has completed, save the selected network's secret to a private file:
+
+```bash
+(umask 077; docker compose run --rm --no-deps --entrypoint /bin/sh initialize-openssl \
+  -c 'cat /jwt/jwt.hex' > /secure/path/jwt.hex)
+```
+
+Create the destination directory first and replace `/secure/path/jwt.hex` with a private path.
+Do not commit or share this file. Configure the external reth to read it and listen on an address
+reachable from consensus. Restrict Engine API access to the consensus node. The external reth
+also needs the matching `config/<network>/genesis.json` or a database snapshot; see
+[Database Snapshots](#database-snapshots-optional).
+
+Run `scripts/regression.sh` after changing Engine addressing. It renders both Compose modes for
+all networks and exercises the entrypoint with a stubbed `plasma-cli`. It requires Docker Compose
+v2.24+ and Python 3, uses a temporary fixture, and starts no containers.
 
 ### Peer Discovery
 
@@ -282,24 +286,24 @@ curl -s -X POST -H "Content-Type: application/json" \
 Symptom: `docker compose logs consensus` shows repeated `engine_exchangeCapabilities` retries and
 the observer/validator loop never starts, while the execution container itself looks healthy.
 
-1. Confirm the Engine URL resolves from inside the consensus container:
+1. Check DNS resolution and TCP connectivity from inside the consensus container:
 
    ```bash
    docker compose exec consensus \
      bash -c 'exec 3<>/dev/tcp/mainnet-execution/8551' && echo reachable
    ```
 
-   Use the hostname from `engine_api_url` (or `ENGINE_API_URL`) for your network.
+   Use the hostname and port from `engine_api_url` (or `ENGINE_API_URL`). This checks TCP
+   reachability; it does not authenticate an Engine API request.
 
-2. If it does not resolve, check that execution is running and carries the alias:
+2. For an in-stack engine, if the check fails, verify that execution is running and carries the alias:
    `docker compose ps`, then
    `docker inspect --format '{{json .NetworkSettings.Networks.plasma.Aliases}}' <container>`.
-   If containers were renamed outside `compose.yml`, recreate the pair so the alias from the
-   compose file is attached again: `docker compose up -d --force-recreate execution consensus`.
-3. If it resolves but retries continue, verify the JWT secret pairing (a mismatch shows up as
+   If existing containers lack the alias, recreate the pair to apply the Compose configuration: `docker compose up -d --force-recreate execution consensus`.
+3. If TCP connectivity succeeds but retries continue, verify the JWT secret pairing (a mismatch shows up as
    401s from reth's auth endpoint):
    `docker compose exec consensus sha256sum /jwt/jwt.hex` and
-   `docker compose exec execution sha256sum /jwt/jwt.hex` must agree.
+   `docker compose exec execution sha256sum /jwt/jwt.hex` must agree. For an external engine, compare against its configured JWT file.
 4. Running execution outside the stack (host, Kubernetes, remote)? Set `ENGINE_API_URL` per
    [Execution Engine URL](#execution-engine-url) instead of relying on Docker DNS.
 
