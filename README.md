@@ -19,14 +19,17 @@
   - [Contents](#contents)
   - [Networks](#networks)
   - [Quick Start](#quick-start)
+  - [Image access and GHCR troubleshooting](#image-access-and-ghcr-troubleshooting)
   - [Directory Structure](#directory-structure)
   - [Configuration](#configuration)
     - [Consensus Configuration](#consensus-configuration)
+    - [Execution Engine URL](#execution-engine-url)
     - [Peer Discovery](#peer-discovery)
     - [Ports](#ports)
   - [Usage](#usage)
     - [Node troubleshooting](#node-troubleshooting)
       - [Sync Issues](#sync-issues)
+      - [Engine API unreachable (consensus startup retries)](#engine-api-unreachable-consensus-startup-retries)
   - [Running a Validator](#running-a-validator)
   - [Monitoring](#monitoring)
   - [Performance](#performance)
@@ -67,12 +70,7 @@ docker compose up -d
 
 # Optional: Verify via docker compose (currently used network via scripts/use.sh)
 docker compose ps
-docker compose logs -f consensus
-docker compose logs -f execution
-# Optional: Verify via docker
-docker ps
-docker logs -f mainnet-consensus
-docker logs -f mainnet-execution
+docker compose logs -f consensus execution
 # Optional: Start monitoring, Grafana available at http://localhost:3000
 docker compose -f monitoring/compose.yml up -d
 # Optional: Start more nodes, devnet, testnet and mainnet nodes can coexist on the same host
@@ -80,15 +78,60 @@ scripts/use.sh testnet
 docker compose up -d
 ```
 
+## Image access and GHCR troubleshooting
+
+The default images can be pulled without a GitHub account or registry login:
+
+| Image | Access |
+| --- | --- |
+| `ghcr.io/plasmalaboratories/plasma-consensus-public` | Public distribution of the consensus client; used by these templates. |
+| `ghcr.io/plasmalaboratories/plasma-consensus` | Private package; requires credentials with package read access. |
+| `ghcr.io/paradigmxyz/reth` | Public image of the open-source Reth client; used by these templates. |
+
+For a permission error, first check the image path and tag, including any Compose overrides.
+Use the `plasma-consensus-public` package for public deployments. A private package's permissions
+do not apply to the separate public package.
+
+Expired or stale GHCR credentials can prevent a public pull. Log out of GHCR and retry the
+selected stack's images:
+
+```bash
+docker logout ghcr.io
+docker compose pull
+```
+
+Logging out removes saved GHCR credentials; private packages will require login again.
+If the error persists, temporarily move Docker's client configuration aside. This also removes
+its credential-helper settings, selected context, and other client preferences from use, so
+record `docker context show` first. The following Bash commands create a unique private backup
+directory instead of overwriting an existing `config.json.bak`:
+
+```bash
+(
+  set -eu
+  docker_config_dir="${DOCKER_CONFIG:-$HOME/.docker}"
+  test -f "$docker_config_dir/config.json"
+  backup_dir=$(mktemp -d "$docker_config_dir/config-backup.XXXXXX")
+  mv "$docker_config_dir/config.json" "$backup_dir/config.json"
+  printf 'Docker configuration saved to %s/config.json\n' "$backup_dir"
+)
+```
+
+Retry `docker compose pull` against the intended Docker context. To restore the configuration,
+move `config.json` from the printed backup directory to its original location, preserving any
+newly created configuration first. Moving the file does not delete credentials from an external
+credential store. Never paste its contents into an issue or commit it to Git.
+
 ## Directory Structure
 
 ```
 compose.yml                   # Network-agnostic service definitions
+compose.external-engine.yml   # Optional override for execution outside this stack
 .env -> config/{network}/.env # Symlink created by scripts/use.sh, git ignored to survive git pulls
 monitoring/                   # Monitoring stack, compose.yml, Prometheus and Grafana resources
-scripts/                      # Scripts such as use.sh and download-snapshot.sh
+scripts/                      # Scripts: use.sh, download-snapshot.sh, regression.sh
 config/                       # Per-network configuration and data
-└── {network}/                # Networks: devnet, testnet, mainnet
+└── {network}/                # One directory per network
     ├── .env                  # Configure network, role, images, tags, snapshots, trusted peers
     ├── non-validator.toml    # Consensus config for NODE_ROLE=observer
     ├── validator.toml        # Consensus config for NODE_ROLE=validator
@@ -106,6 +149,8 @@ Each network's configuration is under `config/{network}/`. The `.env` file holds
 - the image versions and tags
 - the snapshot directory (`SNAPSHOT_DIRECTORY`)
 - the execution trusted-peers list (`EXECUTION_TRUSTED_PEERS`)
+- the optional consensus Engine API URL override (`ENGINE_API_URL`, see
+  [Execution Engine URL](#execution-engine-url))
 
 The `non-validator.toml` and `validator.toml` files hold the consensus configuration. This includes
 each network's bootstrap nodes. One shared `compose.yml` serves all networks.
@@ -135,6 +180,118 @@ Key sections:
 | `[chain.static_committee.*]`  | `bls_public_key`                                                                                                                       | Validator committee                      |
 | `[network.bls_peer_ids]`      | `<bls_public_key>` = `<peer_id>`                                                                                                       | BLS key → peer ID mapping                |
 | `[network.bootstrap_nodes.*]` | `api_host`, `p2p_port`, `peer_id`                                                                                                      | Consensus bootstrap peers                |
+
+### Execution Engine URL
+
+Consensus reads `engine_api_url` from the role's TOML file. Its default is
+`http://<network>-execution:8551`. Compose registers `<network>-execution` and
+`<network>-consensus` as DNS aliases on the shared `plasma` network. These aliases survive
+container renames and match the targets in `monitoring/prometheus/prometheus.yml`.
+Recreating containers through this Compose configuration also attaches the aliases.
+A custom or parameterized `container_name` therefore does not require an Engine URL change.
+For example, save this as `compose.names.yml`:
+
+```yaml
+services:
+  execution:
+    container_name: ${NODE_LABEL:?Set NODE_LABEL}-execution
+  consensus:
+    container_name: ${NODE_LABEL:?Set NODE_LABEL}-consensus
+```
+
+Apply it after selecting the chain with `scripts/use.sh <network>`:
+
+```bash
+export NODE_LABEL=exchange-node
+export COMPOSE_FILE=compose.yml:compose.names.yml
+docker compose up -d
+```
+
+Keep the same override selected for subsequent Compose commands. Keep the `execution` and
+`consensus` service keys, their `plasma` network membership, and their `<network>-execution`
+and `<network>-consensus` aliases. Use service-based commands such as
+`docker compose logs execution` and `docker compose exec consensus <command>` in operator scripts
+so those scripts also survive container renames. `NETWORK` selects the chain and its configuration;
+do not change it merely to label a deployment. `NODE_LABEL` in this example changes only the
+two container names.
+
+These aliases prevent the Engine DNS failure caused by renaming a container. Overrides that
+remove the aliases or disconnect the services from the shared network can still break connectivity.
+External execution needs a reachable explicit URL as described below. The aliases also preserve
+the default Prometheus DNS targets; custom tooling that uses container names needs its own update.
+
+Run one stack per network per Docker host. Two stacks for the same network would publish
+identical aliases on `plasma`, making DNS ambiguous. Separate stacks require distinct Docker
+networks, project names, container names, and published ports; this template does not configure
+that layout.
+
+To override the TOML URL, add `ENGINE_API_URL` to `config/<network>/.env.secret`:
+
+```dotenv
+ENGINE_API_URL="http://host.docker.internal:8551"
+```
+
+`host.docker.internal` resolves to the host on Docker Desktop. On Linux, configure a reachable
+host address or a Compose `extra_hosts` mapping to `host-gateway`.
+
+Compose loads the value into the consensus container through `env_file`. A value in
+`.env.secret` takes precedence over one in `config/<network>/.env`. Exporting the variable in
+the host shell alone does not pass it to this container. Compose does not substitute variables
+inside the mounted TOML files.
+
+When the value is nonempty, the entrypoint passes it as `plasma-cli --engine-api-url`, overriding
+`engine_api_url`. When it is unset or empty, the default stack uses the TOML value. The entrypoint
+logs a generic message announcing the override without printing its value. The URL remains
+visible in process arguments and container metadata, so restrict host and Docker access.
+Keep credential-bearing URLs in the git-ignored `.env.secret`; the network `.env` and TOML
+files are tracked in Git.
+
+For execution running outside this stack, select `compose.external-engine.yml`. From the
+repository root, after selecting a network with `scripts/use.sh <network>`:
+
+```bash
+export COMPOSE_FILE=compose.yml:compose.external-engine.yml
+docker compose up -d
+```
+
+This starts consensus and its initialization services. The local execution services are assigned
+a disabled profile and skipped. Leave `COMPOSE_PROFILES` unset and do not enable the
+`external-engine` profile. This mode requires a nonempty `ENGINE_API_URL`; the entrypoint exits
+with an error before starting `plasma-cli` if it is missing.
+
+If switching an existing stack to external execution, first stop its local execution services
+using the base configuration:
+
+```bash
+docker compose -f compose.yml stop execution initialize-execution
+```
+
+Selecting the override does not stop containers that are already running. The default Prometheus
+execution target will be down when local execution is stopped; configure the external engine's
+metrics target separately. To return to local execution, remove `ENGINE_API_URL` from the network
+env files, ensure the TOML points at `<network>-execution:8551`, unset `COMPOSE_FILE`, and run
+`docker compose up -d`.
+
+Both nodes must use the same JWT secret. The default stack mounts `jwt-secret` at `/jwt` in both
+containers. Consensus uses `authrpc_jwtsecret = "/jwt/jwt.hex"`; reth uses
+`--authrpc.jwtsecret /jwt/jwt.hex`. For an external engine, provision a matching secret before
+starting consensus, or copy the generated secret securely to the external host. For example,
+after `initialize-openssl` has completed, save the selected network's secret to a private file:
+
+```bash
+(umask 077; docker compose run --rm --no-deps --entrypoint /bin/sh initialize-openssl \
+  -c 'cat /jwt/jwt.hex' > /secure/path/jwt.hex)
+```
+
+Create the destination directory first and replace `/secure/path/jwt.hex` with a private path.
+Do not commit or share this file. Configure the external reth to read it and listen on an address
+reachable from consensus. Restrict Engine API access to the consensus node. The external reth
+also needs the matching `config/<network>/genesis.json` or a database snapshot; see
+[Database Snapshots](#database-snapshots-optional).
+
+Run `scripts/regression.sh` after changing Engine addressing. It renders both Compose modes for
+all networks and exercises the entrypoint with a stubbed `plasma-cli`. It requires Docker Compose
+v2.24+ and Python 3, uses a temporary fixture, and starts no containers.
 
 ### Peer Discovery
 
@@ -180,21 +337,23 @@ docker compose up # Run a node and follow logs
 docker compose -f monitoring/compose.yml up -d # Run the monitoring stack detached
 docker compose logs -n 1000 -f # Display the 1000 most recent log entries and follow logs
 docker compose down # Stop the node
-docker compose down -v # Stop node and delete all data volumes
 ```
 
 ### Node troubleshooting
 
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for startup errors, stalled sync, failed snapshot
+imports, and recovery checks. Deployment agents should also read [AGENTS.md](AGENTS.md).
+
 #### Sync Issues
 
-Check execution client sync status:
+See [sync checks](TROUBLESHOOTING.md#healthy-container-stalled-chain) for chain identity,
+progress samples, and finality comparisons. TCP health and `eth_syncing` alone do not establish
+that the node has reached the network head.
 
-```bash
-RPC_PORT=8545 # mainnet; use 8546 for testnet or 8547 for devnet.
-curl -s -X POST -H "Content-Type: application/json" \
-  --data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}' \
-  "http://localhost:${RPC_PORT}"
-```
+#### Engine API unreachable (consensus startup retries)
+
+See [Engine API troubleshooting](TROUBLESHOOTING.md#engine-api-unreachable) for DNS, TCP,
+JWT, and external-engine checks.
 
 ## Running a Validator
 
@@ -269,7 +428,8 @@ Monitor your node's health:
 - Consensus API (Docker network only): `http://<network>-consensus:35070`. Compose does not publish
   this port to the host.
 - Metrics (Docker network only): `http://<network>-execution:9001/metrics` and
-  `http://<network>-consensus:9001/metrics`. Prometheus scrapes these internal endpoints.
+  `http://<network>-consensus:9001/metrics`. Prometheus scrapes these internal endpoints by their
+  stable network aliases, so renaming the containers does not break the scrapes.
 
 ## Performance
 
@@ -279,6 +439,10 @@ Monitor your node's health:
 - Consider increasing ulimits for production deployments
 
 ## Database Snapshots (optional)
+
+For Reth storage v2, use the [Reth v2 migration guide](RETH-V2-MIGRATION.md) and select v2 on
+[Plasma Snapshots](https://snapshots.plasma.to/index.html). The instructions below describe the
+requester-pays S3 download path; they do not select the portal's Reth v2 manifests.
 
 Plasma publishes daily database snapshots for all networks. Snapshots let you bootstrap a new node
 in hours instead of syncing from genesis, which can take days to weeks.
@@ -378,9 +542,15 @@ aws s3 cp \
 
 ### Step 2: Import snapshots
 
+Keep only one matching snapshot pair in the import directory. Each initializer chooses its
+archive independently, so a directory containing several runs can select mismatched state.
+A failed extraction can leave database markers that cause a retry to skip restore; see
+[snapshot import troubleshooting](TROUBLESHOOTING.md#snapshot-import-and-reth-v2).
+
 If a snapshot exists, the compose stack imports it **automatically**. The `initialize-consensus` and
-`initialize-execution` services import the newest `*-backup-*.tar.gz` they find in
-`SNAPSHOT_DIRECTORY` before initializing the databases, on every `docker compose up`. When a node
+`initialize-execution` services select `consensus-*.tar.gz` and `execution-*.tar.gz` respectively
+from `SNAPSHOT_DIRECTORY`, taking the last filename in sorted order. They restore before
+initializing the databases on `docker compose up`. When a node
 database already exists (e.g. restarting an existing node), or when no snapshot is present in the
 `SNAPSHOT_DIRECTORY`, the import step is skipped and the node starts normally.
 
@@ -392,8 +562,10 @@ database already exists (e.g. restarting an existing node), or when no snapshot 
 
 #### Manual snapshot import (alternative)
 
-To restore by hand instead, e.g. into volumes managed outside this compose project, run the steps
-below. Note the compose project is named after the network (`name: ${NETWORK}`), so the volumes are
+Stop both clients and retain consistent backups before restoring by hand. The commands below
+replace database contents in place; use the [v2 migration guide](RETH-V2-MIGRATION.md) for an
+observer migration using new volumes. The default Compose project is named after the network
+(`name: ${NETWORK}`), so the volumes are
 `<network>_consensus-data` and `<network>_execution-data` (e.g. `mainnet_consensus-data`).
 
 Load the selected network's pinned images and use its snapshot directory:
@@ -469,6 +641,8 @@ progress, check back later.
 
 ## Upgrading
 
-See [UPGRADING.md](UPGRADING.md) for moving a network to a new consensus version.
+See [UPGRADING.md](UPGRADING.md) for the consensus `0.15.0` to `1.1.0` upgrade.
+The [Reth v2 migration guide](RETH-V2-MIGRATION.md) covers replacing an observer's databases
+with a matching v2 snapshot pair.
 
 ---

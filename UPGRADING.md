@@ -1,7 +1,8 @@
 # Upgrading from plasma-consensus 0.15.0 to 1.1.0
 
-These instructions cover the normal upgrade path. Upgrade networks independently, completing all
-steps for one network before repeating them for another.
+These instructions cover the consensus upgrade from `0.15.0` to `1.1.0`. For an observer
+database replacement using Reth v2 snapshots, see [Reth v2 migration](RETH-V2-MIGRATION.md).
+Upgrade networks independently, completing the procedure for one network before starting another.
 
 `1.1.0` requires the role argument on `plasma-cli init` and the current TOML configuration schema.
 Use the matching `config/<network>/` templates as the source of truth.
@@ -19,6 +20,10 @@ NODE_ROLE=observer
 ```
 
 `NODE_ROLE` selects the matching config when a new consensus database is initialized.
+Use `ghcr.io/plasmalaboratories/plasma-consensus-public` for public pulls; the similarly named
+`plasma-consensus` package is private. Both the public consensus image and the Reth image need
+no GHCR login. See [image access and pull troubleshooting](README.md#image-access-and-ghcr-troubleshooting)
+if saved credentials cause permission errors.
 
 ## 2. Update the consensus config
 
@@ -69,8 +74,7 @@ Once nothing references `/node/keys/*` or `/node/identities/*`, those directorie
 
 The `1.1.0` node can open and migrate the `0.15.0` consensus database in place. Make or retain a
 backup before upgrading, stop the selected network, and keep its named data volumes and generated
-secrets. Do not use `docker compose down -v`: it removes the execution database, consensus database,
-and generated secrets.
+secrets. Do not use `docker compose down -v`; it deletes both databases and the generated secrets.
 
 On the first `1.1.0` start, the node migrates legacy consensus state into the current checkpoint
 format. If the consensus volume is intentionally empty or has no usable database, the initializer
@@ -85,6 +89,21 @@ docker compose up -d
 docker compose logs initialize-consensus   # exit 0; migration or initialization completed
 ```
 
+## Container names and the Engine API URL
+
+The consensus configs address execution by the `<network>-execution` DNS alias. `compose.yml`
+registers this alias independently of `container_name`; preserve it in Compose overrides.
+Recreate existing containers to apply the alias configuration. Custom or parameterized container
+names are supported as long as both services retain their shared network membership and aliases.
+Keep `NETWORK` set to the actual chain; changing container names does not isolate duplicate
+stacks on the shared network. See the [naming override example](README.md#execution-engine-url)
+and use Compose service names in operational commands.
+
+For execution outside the stack, set `ENGINE_API_URL` in the git-ignored
+`config/<network>/.env.secret` and select `compose.external-engine.yml`. This skips local execution
+startup and requires an explicit URL. See [Execution Engine URL](README.md#execution-engine-url)
+for switching an existing stack, sharing the JWT secret, and returning to local execution.
+
 ## Errors
 
 - `requires a subcommand but one was not provided` → set `NODE_ROLE` (above).
@@ -95,3 +114,5 @@ docker compose logs initialize-consensus   # exit 0; migration or initialization
 
 Networks upgrade independently. After the `1.1.0` migration has run, do not downgrade that data
 volume to `0.15.0`; rollback is not a supported general compatibility path.
+
+For startup, connectivity, or import failures, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).

@@ -23,11 +23,12 @@ scrape_configs:
       - source_labels: [container_label_com_docker_compose_project]
         target_label: network
 
-  # Plasma execution + consensus nodes, scraped by container name on the shared
-  # `plasma` bridge network (created once with `docker network create plasma` and
-  # referenced as external by both compose.yml and monitoring/compose.yml). Targets
-  # are static per network; the `network` label drives the Grafana network dropdown.
-  # Targets for networks that aren't currently running simply show as down (up=0).
+  # Plasma execution + consensus nodes, scraped on the shared `plasma` bridge network (created
+  # once with `docker network create plasma` and referenced as external by both compose.yml and
+  # monitoring/compose.yml). Targets are the stable per-network aliases registered by compose.yml
+  # (networks.plasma.aliases), independent of container_name, so container renames do not break
+  # scrapes. Targets are static per network; the `network` label drives the Grafana network
+  # dropdown. Targets for networks that aren't currently running simply show as down (up=0).
   - job_name: 'plasma'
     static_configs:
       - targets: ['mainnet-execution:9001']

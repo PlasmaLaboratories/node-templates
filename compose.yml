@@ -208,7 +208,11 @@ services:
       initialize-execution:
         condition: service_completed_successfully
     networks:
-      - plasma
+      plasma:
+        # Matches engine_api_url and Prometheus targets, independent of container_name.
+        # Use one stack per network on the shared plasma bridge to avoid alias collisions.
+        aliases:
+          - "${NETWORK}-execution"
 
   consensus:
     image: ${CONSENSUS_IMAGE}:${CONSENSUS_TAG}
@@ -226,9 +230,22 @@ services:
           role=observer
           config_file=non-validator
         fi
+        # The external-engine override skips local execution; require an explicit URL.
+        if [ "$${EXTERNAL_ENGINE:-}" = "1" ] && [ -z "$${ENGINE_API_URL:-}" ]; then
+          echo "ERROR EXTERNAL_ENGINE is set but ENGINE_API_URL is empty; refusing to start" >&2
+          exit 1
+        fi
+        # env_file supplies ENGINE_API_URL. The CLI flag takes precedence over TOML.
+        # Keep the value out of entrypoint logs because URLs can contain credentials.
+        engine_args=()
+        if [ -n "$${ENGINE_API_URL:-}" ]; then
+          echo "INFO ENGINE_API_URL is set; overriding TOML engine_api_url" >&2
+          engine_args+=(--engine-api-url "$$ENGINE_API_URL")
+        fi
         plasma-cli "$$role" \
           --config-path "/tmp/$$config_file.toml" \
           "$${role_args[@]}" \
+          "$${engine_args[@]}" \
           --no-color \
           --timeout-stream-manager 10ms \
           --telemetry.enable-metrics \
@@ -258,7 +275,10 @@ services:
       execution:
         condition: service_healthy
     networks:
-      - plasma
+      plasma:
+        # Matches Prometheus targets independently of container_name.
+        aliases:
+          - "${NETWORK}-consensus"
 
 volumes:
   consensus-data:

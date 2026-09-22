@@ -1,0 +1,22 @@
+# Connect consensus to execution outside this stack. See README, "Execution Engine URL".
+#
+#   export COMPOSE_FILE=compose.yml:compose.external-engine.yml
+#   docker compose up -d
+#
+# Leave the external-engine profile disabled to skip local execution startup.
+# Existing execution containers must be stopped separately. Consensus initialization
+# still runs; provision the same JWT secret on the external engine before connecting.
+# ENGINE_API_URL is required in config/<network>/.env or .env.secret.
+services:
+  execution:
+    profiles: [external-engine]
+  initialize-execution:
+    profiles: [external-engine]
+  consensus:
+    environment:
+      # Mode marker consumed by the consensus entrypoint (fail-fast without ENGINE_API_URL).
+      EXTERNAL_ENGINE: "1"
+    depends_on:
+      execution:
+        condition: service_healthy
+        required: false
