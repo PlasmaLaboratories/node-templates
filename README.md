@@ -19,6 +19,7 @@
   - [Contents](#contents)
   - [Networks](#networks)
   - [Quick Start](#quick-start)
+  - [Image access and GHCR troubleshooting](#image-access-and-ghcr-troubleshooting)
   - [Directory Structure](#directory-structure)
   - [Configuration](#configuration)
     - [Consensus Configuration](#consensus-configuration)
@@ -70,16 +71,56 @@ docker compose up -d
 # Optional: Verify via docker compose (currently used network via scripts/use.sh)
 docker compose ps
 docker compose logs -f consensus execution
-# Optional: Verify via docker
-docker ps
-docker logs -f mainnet-consensus
-docker logs -f mainnet-execution
 # Optional: Start monitoring, Grafana available at http://localhost:3000
 docker compose -f monitoring/compose.yml up -d
 # Optional: Start more nodes, devnet, testnet and mainnet nodes can coexist on the same host
 scripts/use.sh testnet
 docker compose up -d
 ```
+
+## Image access and GHCR troubleshooting
+
+The default images can be pulled without a GitHub account or registry login:
+
+| Image | Access |
+| --- | --- |
+| `ghcr.io/plasmalaboratories/plasma-consensus-public` | Public distribution of the consensus client; used by these templates. |
+| `ghcr.io/plasmalaboratories/plasma-consensus` | Private package; requires credentials with package read access. |
+| `ghcr.io/paradigmxyz/reth` | Public image of the open-source Reth client; used by these templates. |
+
+For a permission error, first check the image path and tag, including any Compose overrides.
+Use the `plasma-consensus-public` package for public deployments. A private package's permissions
+do not apply to the separate public package.
+
+Expired or stale GHCR credentials can prevent a public pull. Log out of GHCR and retry the
+selected stack's images:
+
+```bash
+docker logout ghcr.io
+docker compose pull
+```
+
+Logging out removes saved GHCR credentials; private packages will require login again.
+If the error persists, temporarily move Docker's client configuration aside. This also removes
+its credential-helper settings, selected context, and other client preferences from use, so
+record `docker context show` first. The following Bash commands create a unique private backup
+directory instead of overwriting an existing `config.json.bak`:
+
+```bash
+(
+  set -eu
+  docker_config_dir="${DOCKER_CONFIG:-$HOME/.docker}"
+  test -f "$docker_config_dir/config.json"
+  backup_dir=$(mktemp -d "$docker_config_dir/config-backup.XXXXXX")
+  mv "$docker_config_dir/config.json" "$backup_dir/config.json"
+  printf 'Docker configuration saved to %s/config.json\n' "$backup_dir"
+)
+```
+
+Retry `docker compose pull` against the intended Docker context. To restore the configuration,
+move `config.json` from the printed backup directory to its original location, preserving any
+newly created configuration first. Moving the file does not delete credentials from an external
+credential store. Never paste its contents into an issue or commit it to Git.
 
 ## Directory Structure
 
@@ -147,6 +188,37 @@ Consensus reads `engine_api_url` from the role's TOML file. Its default is
 `<network>-consensus` as DNS aliases on the shared `plasma` network. These aliases survive
 container renames and match the targets in `monitoring/prometheus/prometheus.yml`.
 Recreating containers through this Compose configuration also attaches the aliases.
+A custom or parameterized `container_name` therefore does not require an Engine URL change.
+For example, save this as `compose.names.yml`:
+
+```yaml
+services:
+  execution:
+    container_name: ${NODE_LABEL:?Set NODE_LABEL}-execution
+  consensus:
+    container_name: ${NODE_LABEL:?Set NODE_LABEL}-consensus
+```
+
+Apply it after selecting the chain with `scripts/use.sh <network>`:
+
+```bash
+export NODE_LABEL=exchange-node
+export COMPOSE_FILE=compose.yml:compose.names.yml
+docker compose up -d
+```
+
+Keep the same override selected for subsequent Compose commands. Keep the `execution` and
+`consensus` service keys, their `plasma` network membership, and their `<network>-execution`
+and `<network>-consensus` aliases. Use service-based commands such as
+`docker compose logs execution` and `docker compose exec consensus <command>` in operator scripts
+so those scripts also survive container renames. `NETWORK` selects the chain and its configuration;
+do not change it merely to label a deployment. `NODE_LABEL` in this example changes only the
+two container names.
+
+These aliases prevent the Engine DNS failure caused by renaming a container. Overrides that
+remove the aliases or disconnect the services from the shared network can still break connectivity.
+External execution needs a reachable explicit URL as described below. The aliases also preserve
+the default Prometheus DNS targets; custom tooling that uses container names needs its own update.
 
 Run one stack per network per Docker host. Two stacks for the same network would publish
 identical aliases on `plasma`, making DNS ambiguous. Separate stacks require distinct Docker

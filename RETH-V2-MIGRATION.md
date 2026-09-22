@@ -139,7 +139,10 @@ Set `RETH_V2_IMAGE` and `MIGRATION_CONSENSUS_IMAGE` to the full approved image r
 including `@sha256:...`. Set both volume-name variables to new names distinct from the running
 stack's volumes. Export these variables and `SNAPSHOT_DIRECTORY`. Keep a private record of the values for future restarts.
 Apply the selected consensus release's configuration upgrade instructions. The override pins
-each client's initializer and runtime service to the same image.
+each client's initializer and runtime service to the same image. The public consensus and Reth
+packages need no GHCR login; for permission errors, check the package path and follow
+[image access and pull troubleshooting](README.md#image-access-and-ghcr-troubleshooting) before
+stopping the node.
 
 ```bash
 export MIGRATION_OVERRIDE="$HOME/.config/plasma/reth-v2.yml"

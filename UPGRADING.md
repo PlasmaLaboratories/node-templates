@@ -20,6 +20,10 @@ NODE_ROLE=observer
 ```
 
 `NODE_ROLE` selects the matching config when a new consensus database is initialized.
+Use `ghcr.io/plasmalaboratories/plasma-consensus-public` for public pulls; the similarly named
+`plasma-consensus` package is private. Both the public consensus image and the Reth image need
+no GHCR login. See [image access and pull troubleshooting](README.md#image-access-and-ghcr-troubleshooting)
+if saved credentials cause permission errors.
 
 ## 2. Update the consensus config
 
@@ -89,7 +93,11 @@ docker compose logs initialize-consensus   # exit 0; migration or initialization
 
 The consensus configs address execution by the `<network>-execution` DNS alias. `compose.yml`
 registers this alias independently of `container_name`; preserve it in Compose overrides.
-Recreate existing containers to apply the alias configuration.
+Recreate existing containers to apply the alias configuration. Custom or parameterized container
+names are supported as long as both services retain their shared network membership and aliases.
+Keep `NETWORK` set to the actual chain; changing container names does not isolate duplicate
+stacks on the shared network. See the [naming override example](README.md#execution-engine-url)
+and use Compose service names in operational commands.
 
 For execution outside the stack, set `ENGINE_API_URL` in the git-ignored
 `config/<network>/.env.secret` and select `compose.external-engine.yml`. This skips local execution
