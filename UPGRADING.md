@@ -1,7 +1,8 @@
 # Upgrading from plasma-consensus 0.15.0 to 1.1.0
 
-These instructions cover the normal upgrade path. Upgrade networks independently, completing all
-steps for one network before repeating them for another.
+These instructions cover the consensus upgrade from `0.15.0` to `1.1.0`. For an observer
+database replacement using Reth v2 snapshots, see [Reth v2 migration](RETH-V2-MIGRATION.md).
+Upgrade networks independently, completing the procedure for one network before starting another.
 
 `1.1.0` requires the role argument on `plasma-cli init` and the current TOML configuration schema.
 Use the matching `config/<network>/` templates as the source of truth.

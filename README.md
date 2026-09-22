@@ -392,6 +392,10 @@ Monitor your node's health:
 
 ## Database Snapshots (optional)
 
+For Reth storage v2, use the [Reth v2 migration guide](RETH-V2-MIGRATION.md) and select v2 on
+[Plasma Snapshots](https://snapshots.plasma.to/index.html). The instructions below describe the
+requester-pays S3 download path; they do not select the portal's Reth v2 manifests.
+
 Plasma publishes daily database snapshots for all networks. Snapshots let you bootstrap a new node
 in hours instead of syncing from genesis, which can take days to weeks.
 
@@ -581,6 +585,8 @@ progress, check back later.
 
 ## Upgrading
 
-See [UPGRADING.md](UPGRADING.md) for moving a network to a new consensus version.
+See [UPGRADING.md](UPGRADING.md) for the consensus `0.15.0` to `1.1.0` upgrade.
+The [Reth v2 migration guide](RETH-V2-MIGRATION.md) covers replacing an observer's databases
+with a matching v2 snapshot pair.
 
 ---
