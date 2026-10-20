@@ -8,34 +8,42 @@ Usage:
   scripts/download-snapshot.sh --env testnet [options]
   scripts/download-snapshot.sh --env devnet [options]
 
-Downloads Plasma database snapshots from requester-pays S3 buckets using
-restartable byte-range chunks.
+Downloads public R2 v2 (Reth 2.x) snapshots by default, without AWS credentials.
+Both timestamped components are checked against manifest sizes and SHA-256 digests
+before they are made available for import. Partial downloads use resumable .part
+files; use --snapshot with the same timestamp to resume after a newer publication.
 
-A snapshot is the set of <component>-backup-<YYYYMMDD-HHMMSS>.tar.gz objects
+Legacy requester-pays S3 downloads use --source s3 and restartable byte-range chunks.
+An S3 snapshot is the set of <component>-backup-<YYYYMMDD-HHMMSS>.tar.gz objects
 that share one timestamp under one S3 prefix, e.g.
   s3://plasma-mainnet-db-backups/observer-0/consensus-backup-20260606-020000.tar.gz
   s3://plasma-mainnet-db-backups/observer-0/execution-backup-20260606-020000.tar.gz
-Snapshots are discovered from the object names, so the legacy layout with a
-<network>/<source>/<MM-DD-YY>/ folder is found as well.
+S3 discovery filters versioned prefixes; unversioned prefixes are treated as v1.
+The legacy <network>/<source>/<MM-DD-YY>/ layout is also supported.
 
 Options:
   --env ENV             Network environment: mainnet, testnet, or devnet.
+  --source SOURCE       Snapshot backend: r2 (default) or s3.
+  --version VERSION     Database snapshot version: v1 or v2 (default).
+  --snapshot STAMP      Select YYYYMMDD-HHMMSS, YYYYMMDD or YYYY-MM-DD.
+                        R2 dates must match exactly one complete pair.
+  --latest              Select the newest snapshot (default for R2).
+  --dest DIR            Destination directory. Defaults to ./config/ENV/snapshots.
+  --dry-run             Show what would be downloaded without downloading archives.
+  --no-gzip-test        Skip gzip validation. R2 SHA-256 verification is always enabled.
+  --list                List available snapshots and exit.
+  -h, --help            Show this help.
+
+S3-only options (require --source s3):
   --bucket BUCKET       Override the environment's default S3 bucket.
   --profile PROFILE     AWS CLI profile to use. Defaults to AWS_PROFILE/default resolution.
   --region REGION       AWS region. Defaults to AWS_REGION, AWS_DEFAULT_REGION, or us-east-2.
   --prefix PREFIX       Limit discovery to a bucket prefix, e.g. observer-0/ or observer-0/v2/.
-  --snapshot STAMP      Select a snapshot by timestamp: 20260606-020000, 20260606 or 2026-06-06.
   --folder FOLDER       Select by S3 folder: a full prefix such as observer-0/v2, or a legacy
                         MM-DD-YY date folder such as 06-06-26.
-  --latest              Select the newest discovered snapshot without prompting.
-  --dest DIR            Destination directory. Defaults to ./config/ENV/snapshots.
   --chunk-size SIZE     Chunk size for ranged downloads. Defaults to 5GiB. Examples: 1G, 512M.
-  --dry-run             Show what would be downloaded without downloading.
   --keep-parts          Keep part files after assembling final files.
-  --no-gzip-test        Skip gzip validation for files ending in .gz.
   --use-s5cmd           Download with s5cmd, which is faster than aws s3 cli. Requires s5cmd on PATH.
-  --list                List discovered snapshots (timestamp and S3 prefix) and exit.
-  -h, --help            Show this help.
 
 Environment bucket defaults:
   mainnet: PLASMA_MAINNET_BACKUPS_BUCKET or plasma-mainnet-db-backups
@@ -44,11 +52,15 @@ Environment bucket defaults:
 
 Examples:
   scripts/download-snapshot.sh --env mainnet --latest
-  scripts/download-snapshot.sh --env mainnet --latest --profile plasma-snapshots
-  scripts/download-snapshot.sh --env mainnet --list
-  scripts/download-snapshot.sh --env mainnet --snapshot 20260606-020000
-  scripts/download-snapshot.sh --env devnet --prefix observer-4/v2/ --latest
-  scripts/download-snapshot.sh --env mainnet --latest --use-s5cmd
+  scripts/download-snapshot.sh --env testnet --list
+  scripts/download-snapshot.sh --env testnet --version v1 --latest
+  scripts/download-snapshot.sh --env devnet --snapshot 20261019-020000
+  scripts/download-snapshot.sh --source s3 --env mainnet --latest
+  scripts/download-snapshot.sh --source s3 --env mainnet --latest --profile plasma-snapshots
+  scripts/download-snapshot.sh --source s3 --env mainnet --list
+  scripts/download-snapshot.sh --source s3 --env mainnet --version v1 --snapshot 20260606-020000
+  scripts/download-snapshot.sh --source s3 --env devnet --prefix observer-4/v2/ --latest
+  scripts/download-snapshot.sh --source s3 --env mainnet --latest --use-s5cmd
 EOF
 }
 
@@ -117,6 +129,90 @@ ensure_trailing_slash() {
   fi
 }
 
+# Isolate the temporary-directory cleanup trap from the S3 path.
+download_r2() (
+  local network="$ENVIRONMENT" dest="$DESTDIR" stamp="$SNAPSHOT"
+  local host scratch component archive key digest size file
+  local version_prefix=""
+  [[ "$SNAPSHOT_VERSION" == v1 ]] || version_prefix="$SNAPSHOT_VERSION/"
+  case "$network" in
+    mainnet) host=https://snapshots.plasma.to ;;
+    testnet) host=https://testnet-snapshots.plasma.to ;;
+    devnet) host=https://devnet-snapshots.plasma.to ;;
+    *) die '--env must be mainnet, testnet, or devnet' ;;
+  esac
+  scratch=$(mktemp -d)
+  trap 'rm -rf "$scratch"' EXIT
+
+  if ((LIST_ONLY)) || [[ -n "$stamp" ]]; then
+    curl -fLsS "$host/${version_prefix}index.json" -o "$scratch/index.json"
+    # Only complete pairs are eligible, including when selecting a date.
+    jq -e '[.runs[] | select(.components.consensus != null and .components.execution != null)]' \
+      "$scratch/index.json" > "$scratch/runs.json"
+    if ((LIST_ONLY)); then
+      jq -r 'sort_by(.stamp)[] | .stamp' "$scratch/runs.json"
+      return 0
+    fi
+    jq --arg stamp "$stamp" '[.[] | select(.stamp | startswith($stamp))]' \
+      "$scratch/runs.json" > "$scratch/matches.json"
+    [[ $(jq length "$scratch/matches.json") == 1 ]] || die 'snapshot must match exactly one complete pair; use --list and a full timestamp'
+    jq --arg network "$network" --arg version "$SNAPSHOT_VERSION" '.[0] + {network: $network, version: $version}' \
+      "$scratch/matches.json" > "$scratch/manifest.json"
+  else
+    curl -fLsS "$host/${version_prefix}latest/manifest.json" -o "$scratch/manifest.json"
+  fi
+
+  # Validate keys before using them as URLs or local paths, and require both
+  # components to belong to the same network, version, and timestamp.
+  jq -e --arg network "$network" --arg version "$SNAPSHOT_VERSION" --arg prefix "$version_prefix" '
+    . as $m | .network == $network and (.version // "v1") == $version and
+    (.stamp | test("^[0-9]{8}-[0-9]{6}$")) and
+    (all(["consensus", "execution"][]; . as $c |
+      $m.components[$c] as $entry |
+      $entry.key == ($prefix + $c + "-" + $m.stamp + ".tar.gz") and
+      ($entry.sha256 | test("^sha256:[a-fA-F0-9]{64}$")) and
+      ($entry.sizeBytes | type == "number" and . > 0 and floor == .)))
+  ' "$scratch/manifest.json" > /dev/null || die "invalid or incomplete R2 $SNAPSHOT_VERSION manifest"
+  stamp=$(jq -r .stamp "$scratch/manifest.json")
+  info "Using $network $SNAPSHOT_VERSION snapshot: $stamp"
+  info "Destination: $dest"
+
+  for component in consensus execution; do
+    jq -r --arg component "$component" '.components[$component] | "\(.key)  \(.sizeBytes) bytes  \(.sha256)"' "$scratch/manifest.json"
+  done
+  if ((DRY_RUN)); then
+    jq -r --arg host "$host" '.components[] | $host + "/" + .key' "$scratch/manifest.json"
+    return 0
+  fi
+
+  mkdir -p "$dest"
+  dest=$(cd "$dest" && pwd)
+  # Compose chooses archives independently by name; reject a directory containing
+  # another timestamp so an interrupted run cannot leave it with a mixed pair.
+  for archive in "$dest"/consensus-*.tar.gz "$dest"/execution-*.tar.gz; do
+    [[ -e "$archive" ]] || continue
+    case "${archive##*/}" in
+      "consensus-$stamp.tar.gz"|"execution-$stamp.tar.gz") ;;
+      *) die "move other snapshot archives out of $dest before downloading $stamp" ;;
+    esac
+  done
+
+  for component in consensus execution; do
+    key=$(jq -r --arg c "$component" '.components[$c].key' "$scratch/manifest.json")
+    digest=$(jq -r --arg c "$component" '.components[$c].sha256 | sub("^sha256:"; "")' "$scratch/manifest.json")
+    size=$(jq -r --arg c "$component" '.components[$c].sizeBytes' "$scratch/manifest.json")
+    download_object "$host/$key" "$size" "$host/$version_prefix" "$digest"
+  done
+
+  # Publish only after both components have passed validation.
+  for component in consensus execution; do
+    file="$component-$stamp.tar.gz"
+    if [[ ! -f "$dest/$file" ]]; then mv "$dest/$file.part" "$dest/$file"; fi
+  done
+  cp "$scratch/manifest.json" "$dest/manifest-$SNAPSHOT_VERSION.json"
+  info "Verified snapshot $stamp is ready in $dest"
+)
+
 bucket_for_env() {
   case "$1" in
   mainnet) printf '%s\n' "${PLASMA_MAINNET_BACKUPS_BUCKET:-plasma-mainnet-db-backups}" ;;
@@ -126,6 +222,9 @@ bucket_for_env() {
   esac
 }
 
+SOURCE="r2"
+SNAPSHOT_VERSION="v2"
+S3_OPTIONS=()
 ENVIRONMENT=""
 BUCKET=""
 PROFILE="${AWS_PROFILE:-}"
@@ -144,6 +243,24 @@ USE_S5CMD=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+  --source | --version | --env | --dest | --snapshot | --bucket | --profile | --region | --prefix | --folder | --chunk-size)
+    [[ $# -ge 2 && -n "$2" && "$2" != --* ]] || die "$1 requires a value"
+    ;;
+  esac
+  case "$1" in
+  --bucket | --profile | --region | --prefix | --folder | --chunk-size | --keep-parts | --use-s5cmd)
+    S3_OPTIONS+=("$1")
+    ;;
+  esac
+  case "$1" in
+  --source)
+    SOURCE="$2"
+    shift 2
+    ;;
+  --version)
+    SNAPSHOT_VERSION="$2"
+    shift 2
+    ;;
   --env)
     ENVIRONMENT="${2:-}"
     shift 2
@@ -217,6 +334,30 @@ done
 [[ -n "$ENVIRONMENT" ]] || die "--env is required"
 [[ "$ENVIRONMENT" =~ ^(mainnet|testnet|devnet)$ ]] || die "--env must be mainnet, testnet, or devnet"
 
+[[ "$SOURCE" == r2 || "$SOURCE" == s3 ]] || die '--source must be r2 or s3'
+[[ "$SNAPSHOT_VERSION" == v1 || "$SNAPSHOT_VERSION" == v2 ]] || die '--version must be v1 or v2'
+
+if [[ -n "$SNAPSHOT" ]]; then
+  # Accept 2026-06-06 as well as 20260606 for the date part.
+  if [[ "$SNAPSHOT" =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})$ ]]; then
+    SNAPSHOT="${BASH_REMATCH[1]}${BASH_REMATCH[2]}${BASH_REMATCH[3]}"
+  fi
+  [[ "$SNAPSHOT" =~ ^[0-9]{8}(-[0-9]{6})?$ ]] || die "--snapshot must be YYYYMMDD-HHMMSS, YYYYMMDD or YYYY-MM-DD, got '$SNAPSHOT'"
+fi
+[[ -n "$DESTDIR" ]] || DESTDIR="./config/$ENVIRONMENT/snapshots"
+((CHUNK_SIZE > 0)) || die "--chunk-size must be greater than zero"
+
+if [[ "$SOURCE" == r2 ]]; then
+  ((${#S3_OPTIONS[@]} == 0)) || die "${S3_OPTIONS[*]} require --source s3"
+  [[ -z "$SNAPSHOT" || "$LATEST" == 0 ]] || die '--latest and --snapshot are mutually exclusive'
+  for tool in curl jq sha256sum; do
+    command -v "$tool" >/dev/null 2>&1 || die "$tool is required"
+  done
+  if ((GZIP_TEST && !LIST_ONLY && !DRY_RUN)); then
+    command -v gzip >/dev/null 2>&1 || die 'gzip is required'
+  fi
+fi
+
 if [[ -z "$BUCKET" ]]; then
   BUCKET="$(bucket_for_env "$ENVIRONMENT")"
 fi
@@ -231,15 +372,6 @@ fi
 
 [[ -n "$BUCKET" ]] || die "no default bucket for $ENVIRONMENT; pass --bucket or set PLASMA_${ENVIRONMENT^^}_BACKUPS_BUCKET"
 
-if [[ -n "$SNAPSHOT" ]]; then
-  # Accept 2026-06-06 as well as 20260606 for the date part.
-  if [[ "$SNAPSHOT" =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})$ ]]; then
-    SNAPSHOT="${BASH_REMATCH[1]}${BASH_REMATCH[2]}${BASH_REMATCH[3]}"
-  fi
-  [[ "$SNAPSHOT" =~ ^[0-9]{8}(-[0-9]{6})?$ ]] || die "--snapshot must be YYYYMMDD-HHMMSS, YYYYMMDD or YYYY-MM-DD, got '$SNAPSHOT'"
-fi
-[[ -n "$DESTDIR" ]] || DESTDIR="./config/$ENVIRONMENT/snapshots"
-((CHUNK_SIZE > 0)) || die "--chunk-size must be greater than zero"
 
 AWS_GLOBAL_ARGS=()
 if [[ -n "$PROFILE" ]]; then
@@ -292,12 +424,19 @@ SNAPSHOT_KEY_RE='^(.*/)?[A-Za-z0-9_.-]+-backup-([0-9]{8}-[0-9]{6})\.tar\.gz$'
 discover_snapshots() {
   local prefix="$1"
   declare -A seen=()
-  local key
+  local key stamp parent version
 
   while IFS= read -r key; do
     [[ -n "$key" ]] || continue
     [[ "$key" =~ $SNAPSHOT_KEY_RE ]] || continue
-    seen["${BASH_REMATCH[2]}"$'\t'"${BASH_REMATCH[1]}"]=1
+    stamp="${BASH_REMATCH[2]}"
+    parent="${BASH_REMATCH[1]}"
+    version=v1
+    if [[ "$parent" =~ (^|/)(v[0-9]+)(/|$) ]]; then
+      version="${BASH_REMATCH[2]}"
+    fi
+    [[ "$version" == "$SNAPSHOT_VERSION" ]] || continue
+    seen["$stamp"$'\t'"$parent"]=1
   done < <(list_keys "$prefix")
 
   for key in "${!seen[@]}"; do
@@ -321,7 +460,7 @@ select_snapshot() {
   local -a snapshots=("$@")
   local choice i
 
-  [[ "${#snapshots[@]}" -gt 0 ]] || die "no snapshots (*-backup-YYYYMMDD-HHMMSS.tar.gz) found in s3://$BUCKET/$PREFIX"
+  [[ "${#snapshots[@]}" -gt 0 ]] || die "no $SNAPSHOT_VERSION snapshots (*-backup-YYYYMMDD-HHMMSS.tar.gz) found in s3://$BUCKET/$PREFIX"
 
   if [[ "${#snapshots[@]}" -eq 1 ]]; then
     printf '%s\n' "${snapshots[0]}"
@@ -420,12 +559,34 @@ list_objects_for_prefix() {
     sed '/^None$/d;/^$/d'
 }
 
+verify_archive() {
+  local file="$1"
+  local expected_size="${2:-}"
+  local digest="${3:-}"
+  local actual_size
+
+  if [[ -n "$expected_size" ]]; then
+    actual_size="$(stat_size "$file")"
+    [[ "$actual_size" -eq "$expected_size" ]] ||
+      die "$file has $actual_size bytes; expected $expected_size"
+  fi
+  if [[ -n "$digest" ]]; then
+    printf '%s  %s\n' "$digest" "${file##*/}" |
+      (cd "$(dirname "$file")" && sha256sum -c -)
+  fi
+  if ((GZIP_TEST)); then
+    info "gzip test: $file"
+    gzip -t "$file"
+  fi
+}
+
 download_object() {
   local key="$1"
   local listed_size="$2"
   local snapshot_prefix="$3"
+  local digest="${4:-}"
   local rel dest dest_dir parts_dir size etag parts i start end expected part tmp
-  local assembling actual_size
+  local assembling actual_size url
 
   rel="${key#"$snapshot_prefix"}"
   [[ -n "$rel" && "$rel" != "$key" ]] || rel="${key##*/}"
@@ -433,38 +594,57 @@ download_object() {
   dest_dir="$(dirname "$dest")"
   parts_dir="$DESTDIR/.parts/$rel.parts"
 
-  ensure_login
-  read -r size etag < <(
-    aws_s3api head-object \
-      --bucket "$BUCKET" \
-      --key "$key" \
-      --request-payer requester \
-      --query '[ContentLength,ETag]' \
-      --output text
-  )
+  if [[ "$SOURCE" == r2 ]]; then
+    size="$listed_size"
+    url="$key"
+  else
+    url="s3://$BUCKET/$key"
+    ensure_login
+    read -r size etag < <(
+      aws_s3api head-object \
+        --bucket "$BUCKET" \
+        --key "$key" \
+        --request-payer requester \
+        --query '[ContentLength,ETag]' \
+        --output text
+    )
+  fi
 
   if [[ "$size" != "$listed_size" ]]; then
     info "Object size changed since listing: $key ($listed_size -> $size)"
   fi
 
   if [[ -f "$dest" ]]; then
-    actual_size="$(stat_size "$dest")"
-    if [[ "$actual_size" -eq "$size" ]]; then
-      info "skip complete file: $dest ($(human_bytes "$size"))"
-      return 0
-    fi
-    die "$dest already exists but is $actual_size bytes; expected $size. Move it aside before retrying."
+    verify_archive "$dest" "$size" "$digest"
+    info "skip complete file: $dest ($(human_bytes "$size"))"
+    return 0
   fi
 
-  parts=$(((size + CHUNK_SIZE - 1) / CHUNK_SIZE))
-  info "download: s3://$BUCKET/$key -> $dest ($(human_bytes "$size"), $parts parts)"
-
+  info "download: $url -> $dest ($(human_bytes "$size"))"
   if ((DRY_RUN)); then
     return 0
   fi
 
-  mkdir -p "$dest_dir" "$parts_dir"
+  mkdir -p "$dest_dir"
+  if [[ "$SOURCE" == r2 ]]; then
+    # Keep .part files resumable and hidden from Compose until the pair is verified.
+    actual_size="$(stat_size "$dest.part")"
+    if ((actual_size > size)); then
+      die "$dest.part has $actual_size bytes; expected $size. Move it aside before retrying."
+    fi
+    if ((actual_size < size)); then
+      curl -fL --retry 3 -C - "$url" -o "$dest.part"
+    fi
+    (
+      trap 'rm -f "$dest.part"' EXIT
+      verify_archive "$dest.part" "$size" "$digest"
+      trap - EXIT
+    )
+    return 0
+  fi
 
+  parts=$(((size + CHUNK_SIZE - 1) / CHUNK_SIZE))
+  mkdir -p "$parts_dir"
   for ((i = 0; i < parts; i++)); do
     start=$((i * CHUNK_SIZE))
     end=$((start + CHUNK_SIZE - 1))
@@ -512,15 +692,8 @@ download_object() {
     fi
   done
 
-  actual_size="$(stat_size "$assembling")"
-  [[ "$actual_size" -eq "$size" ]] || die "assembled file has $actual_size bytes; expected $size"
-
+  verify_archive "$assembling" "$size" "$digest"
   mv "$assembling" "$dest"
-
-  if ((GZIP_TEST)) && [[ "$dest" == *.gz ]]; then
-    info "gzip test: $dest"
-    gzip -t "$dest"
-  fi
 
   if ((!KEEP_PARTS)); then
     rmdir "$parts_dir" 2>/dev/null || true
@@ -568,13 +741,17 @@ download_with_s5cmd() {
     local f
     for f in "$DESTDIR"/*.tar.gz; do
       [[ -e "$f" ]] || continue
-      info "gzip test: $f"
-      gzip -t "$f"
+      verify_archive "$f"
     done
   fi
 
   info "done: $DESTDIR"
 }
+
+if [[ "$SOURCE" == r2 ]]; then
+  download_r2
+  exit 0
+fi
 
 command -v aws >/dev/null 2>&1 || die "aws CLI is required"
 command -v gzip >/dev/null 2>&1 || die "gzip is required"
@@ -593,7 +770,7 @@ fi
 SELECTED="$(resolve_snapshot)"
 SNAPSHOT_STAMP="$(snapshot_stamp "$SELECTED")"
 SNAPSHOT_PREFIX="$(snapshot_parent "$SELECTED")"
-info "Using snapshot: s3://$BUCKET/${SNAPSHOT_PREFIX}*-backup-${SNAPSHOT_STAMP}.tar.gz"
+info "Using $SNAPSHOT_VERSION snapshot: s3://$BUCKET/${SNAPSHOT_PREFIX}*-backup-${SNAPSHOT_STAMP}.tar.gz"
 info "Destination: $DESTDIR"
 
 if ((USE_S5CMD)); then
