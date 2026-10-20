@@ -2,8 +2,8 @@
 
 Drop downloaded Plasma **testnet** database snapshot tarballs here:
 
-- `consensus-backup-*.tar.gz`
-- `execution-backup-*.tar.gz`
+- `consensus-*.tar.gz`
+- `execution-*.tar.gz`
 
 `scripts/download-snapshot.sh --env testnet --latest` writes to this directory by
 default, and the compose stack imports the newest archives it finds here on

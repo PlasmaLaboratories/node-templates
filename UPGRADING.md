@@ -1,4 +1,45 @@
-# Upgrading from plasma-consensus 0.15.0 to 1.1.0
+# Upgrading
+
+## plasma-consensus 1.1.0 → 1.2.0
+
+Back up your data and update the image pins in `config/<network>/.env`:
+
+```dotenv
+CONSENSUS_TAG=1.2.0@sha256:1044b47600bb63ffd584bf9289c6b15de7ed5ec769bab05473a5957a1756d765
+EXECUTION_TAG=v2.7.0@sha256:a7f059d470878a5a59f3c575f3fc81b536d0d2d56d7a1cbed73e717a4f766336
+```
+
+**Compatibility:** Consensus `1.1.0` can fail to read `1.2.0` committee snapshots
+with `missing field speculative_prefetch`.
+Use `1.2.0` with current snapshots; rollback requires a pre-upgrade backup.
+
+```bash
+NETWORK="mainnet" # or testnet/devnet
+scripts/use.sh "$NETWORK"
+docker compose pull
+docker compose down
+```
+
+Keep volumes and secrets; do not use `docker compose down -v`.
+
+**Reth storage:** Existing V1 databases remain supported for this upgrade, but
+[Reth plans to remove V1 support](https://github.com/paradigmxyz/reth/releases/tag/v2.0.0)
+in a future release; no removal date is announced. We recommend migrating to V2.
+An image upgrade alone does not convert the database.
+With the node stopped, use [`reth db migrate-v2`](https://reth.rs/cli/reth/db/),
+or restore an observer from our [v2 snapshots](README.md#database-snapshots-optional)
+into fresh database volumes, preserving identities and the JWT secret.
+Download a pair with `scripts/download-snapshot.sh --env "$NETWORK" --version v2 --latest`.
+Complete any storage migration before restarting:
+
+```bash
+docker compose up -d
+docker compose logs --tail 100 consensus execution
+```
+
+Confirm finalized height advances after restarting.
+
+## plasma-consensus 0.15.0 → 1.1.0
 
 These instructions cover the normal upgrade path. Upgrade networks independently, completing all
 steps for one network before repeating them for another.
@@ -6,7 +47,7 @@ steps for one network before repeating them for another.
 `1.1.0` requires the role argument on `plasma-cli init` and the current TOML configuration schema.
 Use the matching `config/<network>/` templates as the source of truth.
 
-## 1. Update `.env`
+### 1. Update `.env`
 
 In `config/<network>/.env`, replace the image/version settings with the current target pins and set
 the node role. Use `validator` for a validator node and `observer` for an observer node:
@@ -20,12 +61,12 @@ NODE_ROLE=observer
 
 `NODE_ROLE` selects the matching config when a new consensus database is initialized.
 
-## 2. Update the consensus config
+### 2. Update the consensus config
 
 Update the role-specific file (`non-validator.toml` for observers or `validator.toml` for validators).
 The same schema changes apply to both current templates.
 
-### Bootstrap nodes
+#### Bootstrap nodes
 
 Convert the bootstrap node array into indexed tables:
 
@@ -40,7 +81,7 @@ Convert the bootstrap node array into indexed tables:
 +peer_id = "16Uiu2HA..."
 ```
 
-### Static committee
+#### Static committee
 
 Replace the old file-path based validator entries with the inline committee and peer mapping:
 
@@ -57,7 +98,7 @@ Replace the old file-path based validator entries with the inline committee and 
 
 Copy the complete committee and peer lists from the matching `config/<network>/` template.
 
-### Aquila activation
+#### Aquila activation
 
 Copy the complete `[chain.aquila]` section from the matching network and role template. It is
 required by the current 1.1.0 templates on devnet, testnet, and mainnet; do not copy activation
@@ -65,7 +106,7 @@ values from another network.
 
 Once nothing references `/node/keys/*` or `/node/identities/*`, those directories can be deleted.
 
-## 3. Restart and migrate the consensus database
+### 3. Restart and migrate the consensus database
 
 The `1.1.0` node can open and migrate the `0.15.0` consensus database in place. Make or retain a
 backup before upgrading, stop the selected network, and keep its named data volumes and generated
@@ -85,7 +126,7 @@ docker compose up -d
 docker compose logs initialize-consensus   # exit 0; migration or initialization completed
 ```
 
-## Errors
+### Errors
 
 - `requires a subcommand but one was not provided` → set `NODE_ROLE` (above).
 - `Invalid config schema: ... is not of type "object"` → an array-of-tables section still needs

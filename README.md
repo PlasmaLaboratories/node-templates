@@ -8,8 +8,8 @@
 
 [![Website](https://img.shields.io/badge/website-plasma.org-14342B)](https://www.plasma.org)
 ![Networks](https://img.shields.io/badge/networks-mainnet%20%C2%B7%20testnet%20%C2%B7%20devnet-14342B)
-![Consensus](https://img.shields.io/badge/consensus-1.1.0-14342B)
-![Execution](https://img.shields.io/badge/execution-Reth%20v1.11.3-14342B)
+![Consensus](https://img.shields.io/badge/consensus-1.2.0-14342B)
+![Execution](https://img.shields.io/badge/execution-Reth%20v2.7.0-14342B)
 
 </div>
 
@@ -46,9 +46,9 @@
 
 | Network | Chain ID | Consensus | Execution    | GHCR Auth Required |
 | ------- | -------- | --------- | ------------ | ------------------ |
-| mainnet | 9745     | 1.1.0     | Reth v1.11.3 | No                 |
-| testnet | 9746     | 1.1.0     | Reth v1.11.3 | No                 |
-| devnet  | 9747     | 1.1.0     | Reth v1.11.3 | No                 |
+| mainnet | 9745     | 1.2.0     | Reth v2.7.0 | No                 |
+| testnet | 9746     | 1.2.0     | Reth v2.7.0 | No                 |
+| devnet  | 9747     | 1.2.0     | Reth v2.7.0 | No                 |
 
 ## Quick Start
 
@@ -110,7 +110,7 @@ Each network's configuration is under `config/{network}/`. The `.env` file holds
 The `non-validator.toml` and `validator.toml` files hold the consensus configuration. This includes
 each network's bootstrap nodes. One shared `compose.yml` serves all networks.
 
-The schema below is for consensus version `1.1.0`. Networks on consensus version `0.15.0` use
+The schema below is for consensus version `1.2.0`. Networks on consensus version `0.15.0` use
 `[validators.*]` file paths instead. See [Upgrading](#upgrading) for details.
 
 > The command line sets execution peers, through `EXECUTION_TRUSTED_PEERS`. Consensus bootstrap
@@ -120,7 +120,7 @@ The schema below is for consensus version `1.1.0`. Networks on consensus version
 
 ### Consensus Configuration
 
-Each network has its own `config/{network}/non-validator.toml` file. Networks on consensus `1.1.0`
+Each network has its own `config/{network}/non-validator.toml` file. Networks on consensus `1.2.0`
 also have a `config/{network}/validator.toml` file. See [Running a Validator](#running-a-validator).
 
 Key sections:
@@ -138,7 +138,7 @@ Key sections:
 
 ### Peer Discovery
 
-Observer templates use `plasma-consensus-public:1.1.0` with peer discovery enabled. Validator
+Observer templates use `plasma-consensus-public:1.2.0` with peer discovery enabled. Validator
 templates use trusted peers with discovery disabled by default. You can configure an external
 address for observer nodes behind NAT:
 
@@ -199,7 +199,7 @@ curl -s -X POST -H "Content-Type: application/json" \
 ## Running a Validator
 
 You can run a validator on **devnet**, **testnet**, and **mainnet**. All three use consensus
-`1.1.0`. You need coordination from the Plasma team to do this.
+`1.2.0`. You need coordination from the Plasma team to do this.
 
 Running `plasma-cli node` with your own keystore does not automatically add you to the active
 validator set. If you're interested in your node being enrolled as an active validator, please contact the Plasma team.
@@ -280,6 +280,31 @@ Monitor your node's health:
 
 ## Database Snapshots (optional)
 
+Use public **v2 (Reth 2.x)** snapshots with these templates. No AWS credentials are required:
+
+- Mainnet: https://snapshots.plasma.to/
+- Testnet: https://testnet-snapshots.plasma.to/
+- Devnet: https://devnet-snapshots.plasma.to/
+
+With `curl`, `jq`, `sha256sum`, and `gzip` installed, download a matching consensus/execution pair:
+
+```bash
+scripts/download-snapshot.sh --env testnet --latest
+```
+
+`--version v2` is the default for both R2 and S3. Use `--version v1` only when restoring a
+legacy database. On R2, v1 snapshots live at the bucket root and v2 snapshots under `v2/`;
+on S3, discovery filters by version and treats unversioned prefixes as v1. The version option
+is independent of `--source s3`; a conflicting `--prefix` will not select another version.
+
+Downloads go to `./config/<network>/snapshots`. The script resumes `.part` files and verifies both
+archives before making them available for import. To resume after a newer snapshot is published,
+use `--snapshot YYYYMMDD-HHMMSS` with the timestamp printed by the interrupted run. Keep only the
+intended pair in the snapshot directory; move old archives aside before downloading another pair.
+
+The following prerequisites and download examples cover the legacy requester-pays S3 snapshots.
+Use `--source s3` to select that backend.
+
 Plasma publishes daily database snapshots for all networks. Snapshots let you bootstrap a new node
 in hours instead of syncing from genesis, which can take days to weeks.
 
@@ -332,21 +357,21 @@ default.
 
 ```bash
 NETWORK="mainnet"
-scripts/download-snapshot.sh --env "$NETWORK" --latest
+scripts/download-snapshot.sh --source s3 --env "$NETWORK" --latest
 ```
 
 With an AWS profile:
 
 ```bash
-scripts/download-snapshot.sh --env "$NETWORK" --latest --profile plasma-snapshots
+scripts/download-snapshot.sh --source s3 --env "$NETWORK" --latest --profile plasma-snapshots
 ```
 
 List the available snapshots or select one by timestamp (full `YYYYMMDD-HHMMSS`, or just the
 date as `YYYYMMDD` / `YYYY-MM-DD`):
 
 ```bash
-scripts/download-snapshot.sh --env "$NETWORK" --list
-scripts/download-snapshot.sh --env "$NETWORK" --snapshot 20260606-020000
+scripts/download-snapshot.sh --source s3 --env "$NETWORK" --list
+scripts/download-snapshot.sh --source s3 --env "$NETWORK" --snapshot 20260606-020000
 ```
 
 When several snapshot sources publish to the same bucket, narrow the search with `--prefix`, for
@@ -355,7 +380,7 @@ example `--prefix observer-0/`.
 For faster download speeds, use [s5cmd](https://github.com/peak/s5cmd)
 
 ```bash
-scripts/download-snapshot.sh --env "$NETWORK" --latest --use-s5cmd # Requires s5cmd in $PATH
+scripts/download-snapshot.sh --source s3 --env "$NETWORK" --latest --use-s5cmd # Requires s5cmd in $PATH
 ```
 
 Manual AWS CLI fallback:
@@ -379,7 +404,7 @@ aws s3 cp \
 ### Step 2: Import snapshots
 
 If a snapshot exists, the compose stack imports it **automatically**. The `initialize-consensus` and
-`initialize-execution` services import the newest `*-backup-*.tar.gz` they find in
+`initialize-execution` services import the newest `consensus-*.tar.gz` and `execution-*.tar.gz` they find in
 `SNAPSHOT_DIRECTORY` before initializing the databases, on every `docker compose up`. When a node
 database already exists (e.g. restarting an existing node), or when no snapshot is present in the
 `SNAPSHOT_DIRECTORY`, the import step is skipped and the node starts normally.
@@ -418,9 +443,9 @@ docker run --rm --user 0:0 --entrypoint /bin/bash \
   "${CONSENSUS_IMAGE}:${CONSENSUS_TAG}" \
   -lc 'set -euo pipefail
 rm -f /consensus/data.mdb /consensus/lock.mdb
-tar -xzf /backups/consensus-backup-*.tar.gz -C /consensus \
+tar -xzf /backups/consensus-*.tar.gz -C /consensus \
   --numeric-owner --same-owner --same-permissions \
-  --transform "s,^consensus-backup.*$,data.mdb,"'
+  --transform "s,^.*consensus-[^/]*$,data.mdb,"'
 ```
 
 Restore execution, preserving the local Reth discovery secret if the snapshot does not include one:
@@ -434,7 +459,7 @@ docker run --rm --user 0:0 --entrypoint /bin/bash \
 tmp=/tmp/discovery-secret
 [ -f /execution/discovery-secret ] && cp -p /execution/discovery-secret "$tmp"
 find /execution -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-tar -xzf /backups/execution-backup-*.tar.gz -C /execution \
+tar -xzf /backups/execution-*.tar.gz -C /execution \
   --strip-components=1 --numeric-owner --same-owner --same-permissions
 [ -f "$tmp" ] && [ ! -f /execution/discovery-secret ] && cp -p "$tmp" /execution/discovery-secret'
 ```
@@ -465,7 +490,7 @@ progress, check back later.
 
 `--prefix` is matched against the start of the object key. Use `<snapshot-source>/` or
 `<snapshot-source>/<version>/`, for example `observer-0/` or `observer-0/v2/`. Run
-`scripts/download-snapshot.sh --env <network> --list` to see the prefixes that actually exist.
+`scripts/download-snapshot.sh --source s3 --env <network> --list` to see the prefixes that actually exist.
 
 ## Upgrading
 
