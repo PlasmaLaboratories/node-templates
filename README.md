@@ -9,7 +9,7 @@
 [![Website](https://img.shields.io/badge/website-plasma.org-14342B)](https://www.plasma.org)
 ![Networks](https://img.shields.io/badge/networks-mainnet%20%C2%B7%20testnet%20%C2%B7%20devnet-14342B)
 ![Consensus](https://img.shields.io/badge/consensus-1.2.0-14342B)
-![Execution](https://img.shields.io/badge/execution-Reth%20v2.7.0-14342B)
+![Execution](https://img.shields.io/badge/execution-Reth%20v2.10.0-14342B)
 
 </div>
 
@@ -46,9 +46,9 @@
 
 | Network | Chain ID | Consensus | Execution    | GHCR Auth Required |
 | ------- | -------- | --------- | ------------ | ------------------ |
-| mainnet | 9745     | 1.2.0     | Reth v2.7.0 | No                 |
-| testnet | 9746     | 1.2.0     | Reth v2.7.0 | No                 |
-| devnet  | 9747     | 1.2.0     | Reth v2.7.0 | No                 |
+| mainnet | 9745     | 1.2.0     | Reth v2.10.0 | No                 |
+| testnet | 9746     | 1.2.0     | Reth v2.10.0 | No                 |
+| devnet  | 9747     | 1.2.0     | Reth v2.10.0 | No                 |
 
 ## Quick Start
 

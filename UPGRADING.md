@@ -6,7 +6,7 @@ Back up your data and update the image pins in `config/<network>/.env`:
 
 ```dotenv
 CONSENSUS_TAG=1.2.0@sha256:1044b47600bb63ffd584bf9289c6b15de7ed5ec769bab05473a5957a1756d765
-EXECUTION_TAG=v2.7.0@sha256:a7f059d470878a5a59f3c575f3fc81b536d0d2d56d7a1cbed73e717a4f766336
+EXECUTION_TAG=v2.10.0@sha256:852cc8981d5504790dabbc8bf70adb9f02441de9929768855de62be199e87f6f
 ```
 
 **Compatibility:** Consensus `1.1.0` can fail to read `1.2.0` committee snapshots
